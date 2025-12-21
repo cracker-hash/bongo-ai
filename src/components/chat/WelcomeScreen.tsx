@@ -1,6 +1,6 @@
-import { Sparkles, GraduationCap, Code, Gamepad2, Search, HelpCircle, MessageCircle } from 'lucide-react';
+import { Sparkles, GraduationCap, Code, Gamepad2, Search, HelpCircle, MessageCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useChat } from '@/contexts/ChatContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, MODE_INFO } from '@/types/chat';
 import bongoLogo from '@/assets/bongo-ai-logo.png';
 
@@ -16,6 +16,16 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
+  const { isAuthenticated, setShowAuthModal } = useAuth();
+
+  const handlePromptClick = (prompt: string, mode: ChatMode) => {
+    if (!isAuthenticated && mode !== 'conversation') {
+      setShowAuthModal(true);
+      return;
+    }
+    onPromptClick(prompt, mode);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 px-4 animate-fade-in">
       {/* Logo & Title */}
@@ -38,7 +48,17 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
       
       <p className="text-sm text-muted-foreground text-center max-w-lg mb-8">
         I can help with research, studying, quizzes, games, coding, and creative projects. 
-        Switch between modes anytime!
+        {!isAuthenticated && (
+          <span className="block mt-2">
+            <button 
+              onClick={() => setShowAuthModal(true)} 
+              className="text-primary hover:underline"
+            >
+              Sign in
+            </button>
+            {' '}to unlock all modes and save your chats!
+          </span>
+        )}
       </p>
 
       {/* Mode badges */}
@@ -46,7 +66,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
         {(Object.keys(MODE_INFO) as ChatMode[]).map((mode) => (
           <span
             key={mode}
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/30 ${MODE_INFO[mode].color}`}
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/30 ${MODE_INFO[mode].color} ${!isAuthenticated && mode !== 'conversation' ? 'opacity-50' : ''}`}
           >
             {mode === 'conversation' && <MessageCircle className="h-3 w-3" />}
             {mode === 'study' && <GraduationCap className="h-3 w-3" />}
@@ -56,25 +76,33 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
             {mode === 'creative' && <Sparkles className="h-3 w-3" />}
             {mode === 'coding' && <Code className="h-3 w-3" />}
             {MODE_INFO[mode].label.replace(' Mode', '')}
+            {!isAuthenticated && mode !== 'conversation' && <Lock className="h-2.5 w-2.5 ml-1" />}
           </span>
         ))}
       </div>
 
       {/* Quick prompts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full">
-        {quickPrompts.map((prompt, index) => (
-          <Button
-            key={index}
-            variant="outline"
-            className="h-auto p-4 justify-start gap-3 bg-muted/30 border-border/50 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all group"
-            onClick={() => onPromptClick(prompt.text, prompt.mode)}
-          >
-            <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <prompt.icon className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm text-left">{prompt.text}</span>
-          </Button>
-        ))}
+        {quickPrompts.map((prompt, index) => {
+          const isLocked = !isAuthenticated && prompt.mode !== 'conversation';
+          return (
+            <Button
+              key={index}
+              variant="outline"
+              className={`h-auto p-4 justify-start gap-3 bg-muted/30 border-border/50 transition-all group ${isLocked ? 'opacity-70' : 'hover:bg-primary/10 hover:border-primary/30 hover:text-primary'}`}
+              onClick={() => handlePromptClick(prompt.text, prompt.mode)}
+            >
+              <div className={`p-2 rounded-lg ${isLocked ? 'bg-muted' : 'bg-primary/10 group-hover:bg-primary/20'} transition-colors`}>
+                {isLocked ? (
+                  <Lock className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <prompt.icon className="h-5 w-5 text-primary" />
+                )}
+              </div>
+              <span className="text-sm text-left text-foreground">{prompt.text}</span>
+            </Button>
+          );
+        })}
       </div>
 
       {/* Creator info */}

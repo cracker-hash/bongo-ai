@@ -1,11 +1,13 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
 import { WelcomeScreen } from './WelcomeScreen';
 import { useChat } from '@/contexts/ChatContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, MODE_INFO } from '@/types/chat';
+import { QuizInterface } from '@/components/quiz/QuizInterface';
 
 // Bongo AI response generator
 function generateBongoResponse(userMessage: string, mode: ChatMode): string {
@@ -30,8 +32,8 @@ I can assist with research, studying, quizzes, games, image generation, voice ch
       `Great topic to study! Here's a simplified explanation that should help you understand better...`,
     ],
     quiz: [
-      `🎯 Quiz Time!\n\nHere's a question for you:\n\nQ: Based on what we're discussing, can you tell me...\n\nA) Option 1\nB) Option 2\nC) Option 3\nD) Option 4\n\nTake your time and think about it!`,
-      `Let's test your knowledge! 🧠 Ready for a challenge?`,
+      `🎯 Quiz Time!\n\nI'll start an interactive quiz for you on this topic. Get ready to test your knowledge!`,
+      `Let's test your knowledge! 🧠 Starting quiz mode...`,
     ],
     research: [
       `📋 Research Summary:\n\nBased on current information, here are the key findings:\n\n• Key Point 1: ...\n• Key Point 2: ...\n• Key Point 3: ...\n\n📎 Sources: [Academic journals and reliable sources would be cited here]`,
@@ -57,7 +59,10 @@ I can assist with research, studying, quizzes, games, image generation, voice ch
 
 export function ChatContainer() {
   const { messages, addMessage, currentMode, setCurrentMode, isLoading, setIsLoading, sidebarOpen } = useChat();
+  const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizTopic, setQuizTopic] = useState('');
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -69,6 +74,14 @@ export function ChatContainer() {
     addMessage(content, 'user');
     setIsLoading(true);
 
+    // Check if this is a quiz request
+    if (currentMode === 'quiz' && isAuthenticated) {
+      setQuizTopic(content);
+      setShowQuiz(true);
+      setIsLoading(false);
+      return;
+    }
+
     // Simulate AI response delay
     setTimeout(() => {
       const response = generateBongoResponse(content, currentMode);
@@ -78,8 +91,15 @@ export function ChatContainer() {
   };
 
   const handleQuickPrompt = (prompt: string, mode: ChatMode) => {
-    setCurrentMode(mode);
+    if (isAuthenticated) {
+      setCurrentMode(mode);
+    }
     handleSendMessage(prompt);
+  };
+
+  const handleQuizComplete = (score: number, total: number) => {
+    setShowQuiz(false);
+    addMessage(`Quiz completed! You scored ${score}/${total} (${Math.round((score/total)*100)}%). Great effort! 🎉`, 'assistant');
   };
 
   return (
@@ -92,13 +112,19 @@ export function ChatContainer() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto scrollbar-thin"
       >
-        {messages.length === 0 ? (
+        {messages.length === 0 && !showQuiz ? (
           <WelcomeScreen onPromptClick={handleQuickPrompt} />
         ) : (
           <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
             {messages.map((message) => (
               <ChatBubble key={message.id} message={message} />
             ))}
+            {showQuiz && (
+              <QuizInterface 
+                topic={quizTopic} 
+                onComplete={handleQuizComplete} 
+              />
+            )}
             {isLoading && <TypingIndicator />}
           </div>
         )}
