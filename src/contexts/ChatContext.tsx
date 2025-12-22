@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Message, ChatMode, ChatProject } from '@/types/chat';
+import { Message, ChatMode, ChatProject, AIModel } from '@/types/chat';
 
 interface ChatContextType {
   messages: Message[];
   currentMode: ChatMode;
+  currentModel: AIModel;
   projects: ChatProject[];
   currentProjectId: string | null;
   sidebarOpen: boolean;
   isLoading: boolean;
   setCurrentMode: (mode: ChatMode) => void;
+  setCurrentModel: (model: AIModel) => void;
   addMessage: (content: string, role: 'user' | 'assistant') => void;
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -23,6 +25,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMode, setCurrentMode] = useState<ChatMode>('conversation');
+  const [currentModel, setCurrentModel] = useState<AIModel>('gpt-4');
   const [projects, setProjects] = useState<ChatProject[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -79,11 +82,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       value={{
         messages,
         currentMode,
+        currentModel,
         projects,
         currentProjectId,
         sidebarOpen,
         isLoading,
         setCurrentMode,
+        setCurrentModel,
         addMessage,
         clearMessages,
         setSidebarOpen,

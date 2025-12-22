@@ -7,6 +7,14 @@ export type ChatMode =
   | 'creative'
   | 'coding';
 
+export type AIModel = 
+  | 'gpt-3'
+  | 'gpt-4'
+  | 'gpt-5'
+  | 'gpt-pro'
+  | 'gemini'
+  | 'grok';
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -67,4 +75,13 @@ export const MODE_INFO: Record<ChatMode, { label: string; icon: string; descript
     description: 'Programming help & debugging',
     color: 'text-green-400',
   },
+};
+
+export const MODEL_INFO: Record<AIModel, { label: string; description: string }> = {
+  'gpt-3': { label: 'GPT-3', description: 'Fast & efficient' },
+  'gpt-4': { label: 'GPT-4', description: 'Advanced reasoning' },
+  'gpt-5': { label: 'GPT-5', description: 'Latest & most capable' },
+  'gpt-pro': { label: 'GPT Pro', description: 'Professional grade' },
+  'gemini': { label: 'Gemini', description: 'Google AI model' },
+  'grok': { label: 'Grok', description: 'xAI model' },
 };
