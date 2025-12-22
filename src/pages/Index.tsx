@@ -12,7 +12,8 @@ const Index = () => {
         <div className="min-h-screen bg-background flex flex-col">
           <TopBar />
           <Sidebar />
-          <main className="flex-1 pt-16 lg:pl-0">
+          {/* Chat always visible - no left padding on mobile */}
+          <main className="flex-1 pt-16">
             <ChatContainer />
           </main>
           <AuthModal />

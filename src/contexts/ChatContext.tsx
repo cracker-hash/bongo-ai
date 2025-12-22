@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { Message, ChatMode, ChatProject, AIModel } from '@/types/chat';
 
 interface ChatContextType {
@@ -22,14 +22,29 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+// Check if screen is mobile
+const getIsMobile = () => typeof window !== 'undefined' && window.innerWidth < 1024;
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMode, setCurrentMode] = useState<ChatMode>('conversation');
   const [currentModel, setCurrentModel] = useState<AIModel>('gpt-4');
   const [projects, setProjects] = useState<ChatProject[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Start with sidebar closed on mobile, open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
+
+  // Update sidebar state on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (getIsMobile()) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const addMessage = useCallback((content: string, role: 'user' | 'assistant') => {
     const newMessage: Message = {
