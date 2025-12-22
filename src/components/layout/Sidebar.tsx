@@ -1,15 +1,7 @@
 import { 
   Plus, 
   MessageCircle, 
-  GraduationCap, 
-  HelpCircle, 
-  Search, 
-  Gamepad2, 
-  Sparkles, 
-  Code,
   Trash2,
-  ChevronRight,
-  Zap,
   Lock,
   X
 } from 'lucide-react';
@@ -23,20 +15,18 @@ import bongoLogo from '@/assets/bongo-ai-logo.png';
 
 const modeIcons: Record<ChatMode, React.ReactNode> = {
   conversation: <MessageCircle className="h-4 w-4" />,
-  study: <GraduationCap className="h-4 w-4" />,
-  quiz: <HelpCircle className="h-4 w-4" />,
-  research: <Search className="h-4 w-4" />,
-  game: <Gamepad2 className="h-4 w-4" />,
-  creative: <Sparkles className="h-4 w-4" />,
-  coding: <Code className="h-4 w-4" />,
+  study: <MessageCircle className="h-4 w-4" />,
+  quiz: <MessageCircle className="h-4 w-4" />,
+  research: <MessageCircle className="h-4 w-4" />,
+  game: <MessageCircle className="h-4 w-4" />,
+  creative: <MessageCircle className="h-4 w-4" />,
+  coding: <MessageCircle className="h-4 w-4" />,
 };
 
 export function Sidebar() {
   const { 
     sidebarOpen, 
     setSidebarOpen,
-    currentMode, 
-    setCurrentMode, 
     projects, 
     currentProjectId,
     selectProject,
@@ -46,8 +36,6 @@ export function Sidebar() {
   } = useChat();
   const { isAuthenticated, setShowAuthModal } = useAuth();
 
-  const modes = Object.keys(MODE_INFO) as ChatMode[];
-
   const handleNewChat = () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
@@ -55,14 +43,6 @@ export function Sidebar() {
     }
     createNewProject();
     clearMessages();
-  };
-
-  const handleModeChange = (mode: ChatMode) => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
-    setCurrentMode(mode);
   };
 
   if (!sidebarOpen) return null;
@@ -96,78 +76,6 @@ export function Sidebar() {
             New Chat
             {!isAuthenticated && <Lock className="h-3 w-3 ml-auto opacity-70" />}
           </Button>
-
-          {/* Model Selector */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground uppercase tracking-wide">
-              <Zap className="h-3 w-3" />
-              Model
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-              >
-                Free
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 border-gold/30 text-gold hover:bg-gold/10"
-                onClick={() => !isAuthenticated && setShowAuthModal(true)}
-              >
-                Pro ✨
-                {!isAuthenticated && <Lock className="h-3 w-3 ml-1" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Modes - Locked for guests */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground uppercase tracking-wide">
-              <ChevronRight className="h-3 w-3" />
-              Modes
-              {!isAuthenticated && <Lock className="h-3 w-3 ml-auto" />}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {modes.map((mode) => (
-                <Button
-                  key={mode}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleModeChange(mode)}
-                  disabled={!isAuthenticated && mode !== 'conversation'}
-                  className={cn(
-                    "justify-start gap-2 h-auto py-2 px-3 text-xs relative",
-                    currentMode === mode 
-                      ? "bg-primary/20 text-primary border border-primary/30" 
-                      : "hover:bg-muted",
-                    !isAuthenticated && mode !== 'conversation' && "opacity-50"
-                  )}
-                >
-                  <span className={MODE_INFO[mode].color}>
-                    {modeIcons[mode]}
-                  </span>
-                  <span className="truncate">{MODE_INFO[mode].label.replace(' Mode', '')}</span>
-                  {!isAuthenticated && mode !== 'conversation' && (
-                    <Lock className="h-3 w-3 absolute right-2 opacity-50" />
-                  )}
-                </Button>
-              ))}
-            </div>
-            {!isAuthenticated && (
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                <button 
-                  onClick={() => setShowAuthModal(true)}
-                  className="text-primary hover:underline"
-                >
-                  Sign in
-                </button>
-                {' '}to unlock all modes
-              </p>
-            )}
-          </div>
 
           {/* Chat History - Hidden for guests */}
           <div className="flex-1 min-h-0">
