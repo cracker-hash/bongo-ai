@@ -3,7 +3,8 @@ import {
   MessageCircle, 
   Trash2,
   Lock,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, MODE_INFO } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import bongoLogo from '@/assets/bongo-ai-logo.png';
+import { format } from 'date-fns';
 
 const modeIcons: Record<ChatMode, React.ReactNode> = {
   conversation: <MessageCircle className="h-4 w-4" />,
@@ -27,11 +29,12 @@ export function Sidebar() {
   const { 
     sidebarOpen, 
     setSidebarOpen,
-    projects, 
-    currentProjectId,
-    selectProject,
-    deleteProject,
-    createNewProject,
+    chats, 
+    currentChatId,
+    selectChat,
+    deleteChat,
+    createNewChat,
+    isLoadingChats,
     clearMessages
   } = useChat();
   const { isAuthenticated, setShowAuthModal } = useAuth();
@@ -41,7 +44,7 @@ export function Sidebar() {
       setShowAuthModal(true);
       return;
     }
-    createNewProject();
+    createNewChat();
     clearMessages();
   };
 
@@ -77,7 +80,7 @@ export function Sidebar() {
             {!isAuthenticated && <Lock className="h-3 w-3 ml-auto opacity-70" />}
           </Button>
 
-          {/* Chat History - Hidden for guests */}
+          {/* Chat History */}
           <div className="flex-1 min-h-0">
             <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground uppercase tracking-wide">
               <MessageCircle className="h-3 w-3" />
@@ -103,7 +106,11 @@ export function Sidebar() {
                       Sign in to save chats
                     </Button>
                   </div>
-                ) : projects.length === 0 ? (
+                ) : isLoadingChats ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : chats.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-sm">
                     <img 
                       src={bongoLogo} 
@@ -114,24 +121,24 @@ export function Sidebar() {
                     <p className="text-xs mt-1">Start a new conversation!</p>
                   </div>
                 ) : (
-                  projects.map((project) => (
+                  chats.map((chat) => (
                     <div
-                      key={project.id}
+                      key={chat.id}
                       className={cn(
                         "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
-                        currentProjectId === project.id 
+                        currentChatId === chat.id 
                           ? "bg-primary/20 border border-primary/30" 
                           : "hover:bg-muted"
                       )}
-                      onClick={() => selectProject(project.id)}
+                      onClick={() => selectChat(chat.id)}
                     >
-                      <span className={MODE_INFO[project.mode].color}>
-                        {modeIcons[project.mode]}
+                      <span className={MODE_INFO[chat.mode].color}>
+                        {modeIcons[chat.mode]}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{project.name}</p>
+                        <p className="text-sm truncate">{chat.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {project.messages.length} messages
+                          {format(chat.updatedAt, 'MMM d, h:mm a')}
                         </p>
                       </div>
                       <Button
@@ -140,7 +147,7 @@ export function Sidebar() {
                         className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteProject(project.id);
+                          deleteChat(chat.id);
                         }}
                       >
                         <Trash2 className="h-3 w-3" />
