@@ -8,12 +8,10 @@ export type ChatMode =
   | 'coding';
 
 export type AIModel = 
-  | 'gpt-3'
-  | 'gpt-4'
+  | 'gemini-flash'
+  | 'gemini-pro'
   | 'gpt-5'
-  | 'gpt-pro'
-  | 'gemini'
-  | 'grok';
+  | 'gpt-5-mini';
 
 export interface Message {
   id: string;
@@ -37,25 +35,25 @@ export const MODE_INFO: Record<ChatMode, { label: string; icon: string; descript
     label: 'Conversation',
     icon: 'MessageCircle',
     description: 'Casual, witty chats about anything',
-    color: 'text-primary',
+    color: 'text-blue-400',
   },
   study: {
     label: 'Study Mode',
     icon: 'GraduationCap',
     description: 'Simplified explanations & study plans',
-    color: 'text-secondary',
+    color: 'text-emerald-400',
   },
   quiz: {
     label: 'Quiz Mode',
     icon: 'HelpCircle',
     description: 'Interactive quizzes with scoring',
-    color: 'text-gold',
+    color: 'text-amber-400',
   },
   research: {
     label: 'Research Mode',
     icon: 'Search',
     description: 'Deep searches with citations',
-    color: 'text-accent',
+    color: 'text-purple-400',
   },
   game: {
     label: 'Game Mode',
@@ -78,10 +76,8 @@ export const MODE_INFO: Record<ChatMode, { label: string; icon: string; descript
 };
 
 export const MODEL_INFO: Record<AIModel, { label: string; description: string }> = {
-  'gpt-3': { label: 'GPT-3', description: 'Fast & efficient' },
-  'gpt-4': { label: 'GPT-4', description: 'Advanced reasoning' },
-  'gpt-5': { label: 'GPT-5', description: 'Latest & most capable' },
-  'gpt-pro': { label: 'GPT Pro', description: 'Professional grade' },
-  'gemini': { label: 'Gemini', description: 'Google AI model' },
-  'grok': { label: 'Grok', description: 'xAI model' },
+  'gemini-flash': { label: 'Gemini Flash', description: 'Fast & balanced' },
+  'gemini-pro': { label: 'Gemini Pro', description: 'Most capable' },
+  'gpt-5': { label: 'GPT-5', description: 'Advanced reasoning' },
+  'gpt-5-mini': { label: 'GPT-5 Mini', description: 'Quick responses' },
 };

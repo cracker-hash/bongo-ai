@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -13,56 +15,62 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'bongo_ai_user';
+function mapSupabaseUser(supabaseUser: SupabaseUser | null): User | null {
+  if (!supabaseUser) return null;
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+    avatar: supabaseUser.user_metadata?.avatar_url,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Load user from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {
-        localStorage.removeItem(STORAGE_KEY);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(mapSupabaseUser(session?.user ?? null));
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(mapSupabaseUser(session?.user ?? null));
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Mock authentication - in production, this would call an API
     if (!email || !password) {
       return { success: false, error: 'Email and password are required' };
     }
 
-    if (password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      email,
-      name: email.split('@')[0],
-    };
-
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    setUser(mapSupabaseUser(data.user));
     setShowAuthModal(false);
-    
     return { success: true };
   }, []);
 
@@ -75,29 +83,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Password must be at least 6 characters' };
     }
 
-    if (!email.includes('@')) {
-      return { success: false, error: 'Please enter a valid email' };
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      email,
-      name,
-    };
-
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    setUser(mapSupabaseUser(data.user));
     setShowAuthModal(false);
-    
     return { success: true };
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   return (
