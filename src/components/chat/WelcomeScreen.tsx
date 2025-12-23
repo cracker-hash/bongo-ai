@@ -42,23 +42,8 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
         Welcome to Bongo AI
       </h1>
       
-      <p className="text-muted-foreground text-center max-w-md mb-2">
-        Your helpful, witty, and fun AI assistant with an African tech flair.
-      </p>
-      
-      <p className="text-sm text-muted-foreground text-center max-w-lg mb-8">
-        I can help with research, studying, quizzes, games, coding, and creative projects. 
-        {!isAuthenticated && (
-          <span className="block mt-2">
-            <button 
-              onClick={() => setShowAuthModal(true)} 
-              className="text-primary hover:underline"
-            >
-              Sign in
-            </button>
-            {' '}to unlock all modes and save your chats!
-          </span>
-        )}
+      <p className="text-muted-foreground text-center max-w-md mb-8">
+        Select a mode below or start chatting to begin.
       </p>
 
       {/* Mode badges */}
@@ -105,15 +90,6 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
         })}
       </div>
 
-      {/* Creator info */}
-      <div className="mt-12 text-center">
-        <p className="text-xs text-muted-foreground">
-          Created by <span className="gold-accent font-medium">Tito Oscar Mwaisengela</span>
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          University of Dar es Salaam, Tanzania 🇹🇿
-        </p>
-      </div>
     </div>
   );
 }

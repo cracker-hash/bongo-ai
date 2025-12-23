@@ -35,12 +35,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
 
-  // Update sidebar state on resize
+  // Only auto-close sidebar when transitioning TO mobile size
   useEffect(() => {
+    let prevIsMobile = getIsMobile();
     const handleResize = () => {
-      if (getIsMobile()) {
+      const nowMobile = getIsMobile();
+      // Only close when transitioning from desktop to mobile
+      if (!prevIsMobile && nowMobile) {
         setSidebarOpen(false);
       }
+      prevIsMobile = nowMobile;
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
