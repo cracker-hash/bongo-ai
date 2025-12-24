@@ -8,9 +8,11 @@ import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode } from '@/types/chat';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
+import { Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function ChatContainer() {
-  const { messages, sendMessage, currentMode, setCurrentMode, isLoading, sidebarOpen } = useChat();
+  const { messages, sendMessage, currentMode, setCurrentMode, isLoading, sidebarOpen, setSidebarOpen } = useChat();
   const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -47,9 +49,27 @@ export function ChatContainer() {
 
   return (
     <div 
-      className="flex flex-col h-full transition-all duration-300"
-      style={{ marginLeft: sidebarOpen ? '288px' : '0' }}
+      className="flex flex-col h-[calc(100vh-64px)] transition-all duration-300"
+      style={{ 
+        marginLeft: sidebarOpen ? '288px' : '0',
+        width: sidebarOpen ? 'calc(100% - 288px)' : '100%'
+      }}
     >
+      {/* Mobile header with menu button */}
+      {!sidebarOpen && (
+        <div className="lg:hidden flex items-center gap-2 p-3 border-b border-border">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            className="h-9 w-9"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <span className="font-medium text-sm">Bongo AI</span>
+        </div>
+      )}
+
       {/* Messages area */}
       <div 
         ref={scrollRef}
@@ -59,8 +79,22 @@ export function ChatContainer() {
           <WelcomeScreen onPromptClick={handleQuickPrompt} />
         ) : (
           <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
-            {messages.map((message) => (
-              <ChatBubble key={message.id} message={message} />
+            {messages.map((message, index) => (
+              <ChatBubble 
+                key={message.id} 
+                message={message}
+                onRegenerate={
+                  message.role === 'assistant' && index === messages.length - 1
+                    ? () => {
+                        // Find the last user message and resend
+                        const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                        if (lastUserMsg) {
+                          sendMessage(lastUserMsg.content);
+                        }
+                      }
+                    : undefined
+                }
+              />
             ))}
             {showQuiz && (
               <QuizInterface 

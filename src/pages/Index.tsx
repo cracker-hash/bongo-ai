@@ -9,11 +9,10 @@ const Index = () => {
   return (
     <AuthProvider>
       <ChatProvider>
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-background">
           <TopBar />
           <Sidebar />
-          {/* Chat always visible - no left padding on mobile */}
-          <main className="flex-1 pt-16">
+          <main className="pt-16 min-h-screen">
             <ChatContainer />
           </main>
           <AuthModal />
