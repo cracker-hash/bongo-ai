@@ -4,7 +4,11 @@ import {
   Trash2,
   Lock,
   X,
-  Loader2
+  Loader2,
+  Settings,
+  LogOut,
+  User,
+  ChevronLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +18,7 @@ import { ChatMode, MODE_INFO } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import bongoLogo from '@/assets/bongo-ai-logo.png';
 import { format } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 
 const modeIcons: Record<ChatMode, React.ReactNode> = {
   conversation: <MessageCircle className="h-4 w-4" />,
@@ -37,7 +42,7 @@ export function Sidebar() {
     isLoadingChats,
     clearMessages
   } = useChat();
-  const { isAuthenticated, setShowAuthModal } = useAuth();
+  const { isAuthenticated, setShowAuthModal, user, logout } = useAuth();
 
   const handleNewChat = () => {
     if (!isAuthenticated) {
@@ -58,113 +63,173 @@ export function Sidebar() {
         onClick={() => setSidebarOpen(false)}
       />
       
-      <aside className="fixed left-0 top-16 bottom-0 w-72 glass-surface border-r border-border/50 z-40 animate-slide-in-left">
-        {/* Mobile close button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 top-2 lg:hidden hover:bg-muted"
-          onClick={() => setSidebarOpen(false)}
-        >
-          <X className="h-5 w-5" />
-        </Button>
+      <aside className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border z-40 flex flex-col animate-slide-in-left">
+        {/* Header with logo */}
+        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2">
+            <img 
+              src={bongoLogo} 
+              alt="Bongo AI" 
+              className="h-8 w-8 rounded-lg object-contain"
+            />
+            <span className="font-semibold text-lg text-sidebar-foreground">
+              Bongo AI
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
 
-        <div className="flex flex-col h-full p-4 pt-12 lg:pt-4">
-          {/* New Chat Button */}
+        {/* New Chat Button */}
+        <div className="p-3">
           <Button
             onClick={handleNewChat}
-            className="w-full mb-6 gradient-bg hover:opacity-90 transition-opacity font-display font-semibold gap-2"
+            className="w-full gradient-bg hover:opacity-90 transition-opacity font-medium gap-2 h-11"
           >
             <Plus className="h-5 w-5" />
             New Chat
             {!isAuthenticated && <Lock className="h-3 w-3 ml-auto opacity-70" />}
           </Button>
+        </div>
 
-          {/* Chat History */}
-          <div className="flex-1 min-h-0">
-            <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground uppercase tracking-wide">
-              <MessageCircle className="h-3 w-3" />
-              Recent Chats
-              {!isAuthenticated && <Lock className="h-3 w-3 ml-auto" />}
-            </div>
-            <ScrollArea className="h-full pr-2">
-              <div className="space-y-1">
-                {!isAuthenticated ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <img 
-                      src={bongoLogo} 
-                      alt="Bongo AI" 
-                      className="h-16 w-16 mx-auto mb-3 opacity-30"
-                    />
-                    <p>Chat history requires login</p>
+        {/* Chat History */}
+        <div className="flex-1 min-h-0 px-3">
+          <div className="flex items-center gap-2 mb-2 text-xs text-sidebar-foreground/60 uppercase tracking-wide font-medium">
+            <MessageCircle className="h-3 w-3" />
+            Chat History
+            {!isAuthenticated && <Lock className="h-3 w-3 ml-auto" />}
+          </div>
+          <ScrollArea className="h-[calc(100%-32px)]">
+            <div className="space-y-1 pr-2">
+              {!isAuthenticated ? (
+                <div className="text-center py-8 text-sidebar-foreground/60 text-sm">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>Sign in to save chats</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-primary mt-2"
+                    onClick={() => setShowAuthModal(true)}
+                  >
+                    Sign in now
+                  </Button>
+                </div>
+              ) : isLoadingChats ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-sidebar-foreground/60" />
+                </div>
+              ) : chats.length === 0 ? (
+                <div className="text-center py-8 text-sidebar-foreground/60 text-sm">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No chats yet</p>
+                  <p className="text-xs mt-1 opacity-70">Start a new conversation!</p>
+                </div>
+              ) : (
+                chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={cn(
+                      "group flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all",
+                      currentChatId === chat.id 
+                        ? "bg-sidebar-accent" 
+                        : "hover:bg-sidebar-accent/50"
+                    )}
+                    onClick={() => selectChat(chat.id)}
+                  >
+                    <span className={cn("shrink-0", MODE_INFO[chat.mode].color)}>
+                      {modeIcons[chat.mode]}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-sidebar-foreground truncate">{chat.name}</p>
+                      <p className="text-xs text-sidebar-foreground/50">
+                        {format(chat.updatedAt, 'MMM d, h:mm a')}
+                      </p>
+                    </div>
                     <Button
-                      variant="link"
-                      size="sm"
-                      className="text-primary mt-2"
-                      onClick={() => setShowAuthModal(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteChat(chat.id);
+                      }}
                     >
-                      Sign in to save chats
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                ) : isLoadingChats ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* User Profile Section at Bottom */}
+        <div className="mt-auto border-t border-sidebar-border">
+          <div className="p-3">
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent/50 cursor-pointer transition-colors">
+                <div className="relative">
+                  <div className="h-10 w-10 rounded-full bg-sidebar-accent flex items-center justify-center overflow-hidden border-2 border-primary/30">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-5 w-5 text-sidebar-foreground" />
+                    )}
                   </div>
-                ) : chats.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <img 
-                      src={bongoLogo} 
-                      alt="Bongo AI" 
-                      className="h-16 w-16 mx-auto mb-3 opacity-30"
-                    />
-                    <p>No chats yet</p>
-                    <p className="text-xs mt-1">Start a new conversation!</p>
-                  </div>
-                ) : (
-                  chats.map((chat) => (
-                    <div
-                      key={chat.id}
-                      className={cn(
-                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
-                        currentChatId === chat.id 
-                          ? "bg-primary/20 border border-primary/30" 
-                          : "hover:bg-muted"
-                      )}
-                      onClick={() => selectChat(chat.id)}
-                    >
-                      <span className={MODE_INFO[chat.mode].color}>
-                        {modeIcons[chat.mode]}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{chat.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(chat.updatedAt, 'MMM d, h:mm a')}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteChat(chat.id);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))
-                )}
+                  {/* Online status indicator */}
+                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[hsl(var(--online))] border-2 border-sidebar" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {user.name || 'User'}
+                  </p>
+                  <p className="text-xs text-sidebar-foreground/50 truncate">
+                    {user.email}
+                  </p>
+                </div>
               </div>
-            </ScrollArea>
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-auto py-3 text-sidebar-foreground hover:bg-sidebar-accent/50"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <div className="h-10 w-10 rounded-full bg-sidebar-accent flex items-center justify-center">
+                  <User className="h-5 w-5" />
+                </div>
+                <span className="font-medium">Sign In</span>
+              </Button>
+            )}
           </div>
 
-          {/* Footer */}
-          <div className="pt-4 border-t border-border/50 mt-4">
-            <p className="text-xs text-muted-foreground text-center">
-              Made with ❤️ in Tanzania
-            </p>
-          </div>
+          {/* Settings and Logout */}
+          {isAuthenticated && (
+            <div className="px-3 pb-3 flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 gap-2 text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
       </aside>
     </>
