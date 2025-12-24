@@ -11,27 +11,80 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, mode } = await req.json();
+    const { messages, mode, generateImage, imagePrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Handle image generation requests
+    if (generateImage && imagePrompt) {
+      console.log("Generating image with prompt:", imagePrompt);
+      
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image-preview",
+          messages: [
+            { role: "user", content: imagePrompt }
+          ],
+          modalities: ["image", "text"]
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Image generation error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: "Failed to generate image" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await response.json();
+      console.log("Image generation response received");
+      
+      // Extract generated image
+      const generatedImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      const textResponse = data.choices?.[0]?.message?.content || "Here's your generated image!";
+      
+      return new Response(JSON.stringify({ 
+        generatedImage,
+        textResponse,
+        type: 'image_generation'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Mode-specific system prompts
     const modePrompts: Record<string, string> = {
-      conversation: "You are Bongo AI, a helpful, witty, and fun AI assistant created by Tito Oscar Mwaisengela, a Tanzanian student at the University of Dar es Salaam. You have an African tech flair and are friendly and engaging. Keep responses concise but informative.",
-      study: "You are Bongo AI in Study Mode. Help students learn by breaking down complex topics into simple, easy-to-understand explanations. Use examples, analogies, and step-by-step breakdowns. Be encouraging and patient.",
+      conversation: "You are Bongo AI, a helpful, witty, and fun AI assistant created by Tito Oscar Mwaisengela, a Tanzanian student at the University of Dar es Salaam. You have an African tech flair and are friendly and engaging. Keep responses concise but informative. You can analyze images when users share them and generate images when asked.",
+      study: "You are Bongo AI in Study Mode. Help students learn by breaking down complex topics into simple, easy-to-understand explanations. Use examples, analogies, and step-by-step breakdowns. Be encouraging and patient. You can analyze images and diagrams to help explain concepts.",
       quiz: "You are Bongo AI in Quiz Mode. Generate educational quiz questions with multiple choice answers. After each answer, provide a brief explanation of why it's correct or incorrect.",
-      research: "You are Bongo AI in Research Mode. Provide in-depth, well-structured research summaries with key points and findings. Be thorough and cite types of sources when applicable.",
+      research: "You are Bongo AI in Research Mode. Provide in-depth, well-structured research summaries with key points and findings. Be thorough and cite types of sources when applicable. You can analyze images and documents shared by users.",
       game: "You are Bongo AI in Game Mode. Create fun text-based games, puzzles, riddles, and interactive challenges. Be playful and engaging!",
-      creative: "You are Bongo AI in Creative Mode. Help with creative writing, brainstorming, and generating innovative ideas. Be imaginative and inspiring!",
-      coding: "You are Bongo AI in Coding Mode. Help with programming questions, debugging, code reviews, and explaining programming concepts. Provide code examples when helpful. Format code properly using markdown code blocks."
+      creative: "You are Bongo AI in Creative Mode. Help with creative writing, brainstorming, and generating innovative ideas. Be imaginative and inspiring! You can generate images to illustrate concepts when asked.",
+      coding: "You are Bongo AI in Coding Mode. Help with programming questions, debugging, code reviews, and explaining programming concepts. Provide code examples when helpful. Format code properly using markdown code blocks. You can analyze code screenshots and diagrams."
     };
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
     console.log(`Processing chat request in ${mode} mode with ${messages.length} messages`);
+
+    // Check if any message contains images
+    const hasImages = messages.some((m: any) => 
+      Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url')
+    );
+
+    if (hasImages) {
+      console.log("Processing request with images");
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

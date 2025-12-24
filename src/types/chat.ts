@@ -13,12 +13,18 @@ export type AIModel =
   | 'gpt-5'
   | 'gpt-5-mini';
 
+export interface MessageImage {
+  url: string;
+  type: 'uploaded' | 'generated';
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   mode?: ChatMode;
+  images?: MessageImage[];
 }
 
 export interface ChatProject {

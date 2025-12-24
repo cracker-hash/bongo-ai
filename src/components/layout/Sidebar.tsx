@@ -18,7 +18,7 @@ import { ChatMode, MODE_INFO } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import bongoLogo from '@/assets/bongo-ai-logo.png';
 import { format } from 'date-fns';
-import { Separator } from '@/components/ui/separator';
+import { useNavigate } from 'react-router-dom';
 
 const modeIcons: Record<ChatMode, React.ReactNode> = {
   conversation: <MessageCircle className="h-4 w-4" />,
@@ -31,6 +31,7 @@ const modeIcons: Record<ChatMode, React.ReactNode> = {
 };
 
 export function Sidebar() {
+  const navigate = useNavigate();
   const { 
     sidebarOpen, 
     setSidebarOpen,
@@ -215,6 +216,7 @@ export function Sidebar() {
                 variant="ghost"
                 size="sm"
                 className="flex-1 gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                onClick={() => navigate('/settings')}
               >
                 <Settings className="h-4 w-4" />
                 Settings
