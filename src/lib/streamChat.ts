@@ -1,6 +1,6 @@
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string | any[] };
 
 export async function streamChat({
   messages,
@@ -94,5 +94,44 @@ export async function streamChat({
   } catch (error) {
     console.error("Stream error:", error);
     onError(error instanceof Error ? error.message : "Stream failed");
+  }
+}
+
+interface GenerateImageResult {
+  generatedImage?: string;
+  textResponse?: string;
+}
+
+export async function generateImage(prompt: string): Promise<GenerateImageResult> {
+  try {
+    const resp = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ 
+        generateImage: true,
+        imagePrompt: prompt 
+      }),
+    });
+
+    if (!resp.ok) {
+      throw new Error("Failed to generate image");
+    }
+
+    const data = await resp.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return {
+      generatedImage: data.generatedImage,
+      textResponse: data.textResponse,
+    };
+  } catch (error) {
+    console.error("Generate image error:", error);
+    throw error;
   }
 }

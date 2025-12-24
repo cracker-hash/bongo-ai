@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
-import { Message, ChatMode, AIModel } from '@/types/chat';
+import { Message, ChatMode, AIModel, MessageImage } from '@/types/chat';
 import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
-import { streamChat } from '@/lib/streamChat';
+import { streamChat, generateImage } from '@/lib/streamChat';
 import { toast } from 'sonner';
 
 interface ChatContextType {
@@ -16,7 +16,7 @@ interface ChatContextType {
   isLoadingChats: boolean;
   setCurrentMode: (mode: ChatMode) => void;
   setCurrentModel: (model: AIModel) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, images?: string[]) => Promise<void>;
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
   createNewChat: () => Promise<void>;
@@ -103,13 +103,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [deleteChatStorage, currentChatId]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, images?: string[]) => {
+    // Check if this is an image generation request
+    const isImageGenRequest = content.toLowerCase().startsWith('generate an image:') || 
+                              content.toLowerCase().startsWith('create an image:') ||
+                              content.toLowerCase().startsWith('draw ') ||
+                              content.toLowerCase().includes('generate an image of');
+
+    const userImages: MessageImage[] = images?.map(url => ({ url, type: 'uploaded' as const })) || [];
+    
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content,
       timestamp: new Date(),
       mode: currentMode,
+      images: userImages.length > 0 ? userImages : undefined,
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -132,11 +141,59 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       await saveMessage(chatId, content, 'user', currentMode);
     }
 
-    // Prepare messages for AI
-    const aiMessages = [...messages, userMessage].map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Handle image generation
+    if (isImageGenRequest) {
+      const imagePrompt = content
+        .replace(/^(generate an image:|create an image:|draw )/i, '')
+        .replace(/generate an image of/i, '')
+        .trim();
+
+      try {
+        const result = await generateImage(imagePrompt);
+        
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: result.textResponse || "Here's your generated image!",
+          timestamp: new Date(),
+          mode: currentMode,
+          images: result.generatedImage ? [{ url: result.generatedImage, type: 'generated' }] : undefined,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        if (isAuthenticated && user && chatId) {
+          await saveMessage(chatId, assistantMessage.content, 'assistant', currentMode);
+          loadChats();
+        }
+      } catch (error) {
+        toast.error('Failed to generate image');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Prepare messages for AI (including images)
+    const aiMessages = [...messages, userMessage].map(m => {
+      if (m.images && m.images.length > 0) {
+        // Format for vision model
+        return {
+          role: m.role,
+          content: [
+            { type: 'text', text: m.content },
+            ...m.images.map(img => ({
+              type: 'image_url',
+              image_url: { url: img.url }
+            }))
+          ]
+        };
+      }
+      return {
+        role: m.role,
+        content: m.content,
+      };
+    });
 
     // Create placeholder for assistant message
     const assistantMessageId = crypto.randomUUID();

@@ -10,13 +10,19 @@ import {
   RefreshCw, 
   ThumbsUp, 
   ThumbsDown,
-  Pencil
+  Download,
+  ZoomIn
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ChatBubbleProps {
   message: Message;
@@ -53,8 +59,22 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
   const handleFeedback = (type: 'up' | 'down') => {
     setFeedback(type);
     toast({ 
-      description: type === 'up' ? 'Thanks for the feedback!' : 'We\'ll try to improve' 
+      description: type === 'up' ? 'Thanks for the feedback!' : "We'll try to improve" 
     });
+  };
+
+  const handleDownloadImage = async (imageUrl: string) => {
+    try {
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `bongo-ai-image-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ description: 'Image downloaded' });
+    } catch (error) {
+      toast({ description: 'Failed to download image', variant: 'destructive' });
+    }
   };
 
   return (
@@ -93,78 +113,124 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
           <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
 
-        {/* Message bubble */}
-        <div
-          className={cn(
-            "rounded-2xl px-4 py-3 shadow-sm",
-            isUser 
-              ? "bg-chat-user text-chat-user-foreground rounded-tr-md" 
-              : "bg-chat-ai text-chat-ai-foreground rounded-tl-md border border-border/50"
-          )}
-        >
-          {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-              {message.content}
-            </p>
-          ) : (
-            <div className="text-sm markdown-content">
-              <ReactMarkdown
-                components={{
-                  code({ node, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const isInline = !match;
-                    
-                    if (isInline) {
-                      return (
-                        <code className="inline-code" {...props}>
-                          {children}
-                        </code>
-                      );
-                    }
+        {/* Attached/Generated Images */}
+        {message.images && message.images.length > 0 && (
+          <div className={cn("flex gap-2 flex-wrap", isUser && "justify-end")}>
+            {message.images.map((img, index) => (
+              <Dialog key={index}>
+                <DialogTrigger asChild>
+                  <div className="relative group/img cursor-pointer">
+                    <img
+                      src={img.url}
+                      alt={`${img.type === 'generated' ? 'Generated' : 'Attached'} image ${index + 1}`}
+                      className="max-h-64 max-w-xs rounded-lg border border-border object-cover hover:opacity-90 transition-opacity"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity bg-background/50 rounded-lg">
+                      <ZoomIn className="h-6 w-6" />
+                    </div>
+                    {img.type === 'generated' && (
+                      <span className="absolute bottom-2 left-2 text-xs bg-primary/80 text-primary-foreground px-2 py-0.5 rounded">
+                        AI Generated
+                      </span>
+                    )}
+                  </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl p-2">
+                  <img
+                    src={img.url}
+                    alt={`${img.type === 'generated' ? 'Generated' : 'Attached'} image ${index + 1}`}
+                    className="w-full h-auto rounded-lg"
+                  />
+                  <div className="flex justify-end gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadImage(img.url)}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ))}
+          </div>
+        )}
 
-                    return (
-                      <div className="relative my-4">
-                        <div className="flex items-center justify-between bg-muted/80 px-4 py-2 rounded-t-lg border border-border/50">
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {match[1]}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs hover:bg-background/50"
-                            onClick={() => {
-                              navigator.clipboard.writeText(String(children));
-                              toast({ description: 'Code copied!' });
+        {/* Message bubble */}
+        {message.content && (
+          <div
+            className={cn(
+              "rounded-2xl px-4 py-3 shadow-sm",
+              isUser 
+                ? "bg-chat-user text-chat-user-foreground rounded-tr-md" 
+                : "bg-chat-ai text-chat-ai-foreground rounded-tl-md border border-border/50"
+            )}
+          >
+            {isUser ? (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {message.content}
+              </p>
+            ) : (
+              <div className="text-sm markdown-content">
+                <ReactMarkdown
+                  components={{
+                    code({ node, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !match;
+                      
+                      if (isInline) {
+                        return (
+                          <code className="inline-code" {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+
+                      return (
+                        <div className="relative my-4">
+                          <div className="flex items-center justify-between bg-muted/80 px-4 py-2 rounded-t-lg border border-border/50">
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {match[1]}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs hover:bg-background/50"
+                              onClick={() => {
+                                navigator.clipboard.writeText(String(children));
+                                toast({ description: 'Code copied!' });
+                              }}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
+                          </div>
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                            customStyle={{
+                              margin: 0,
+                              borderTopLeftRadius: 0,
+                              borderTopRightRadius: 0,
+                              borderBottomLeftRadius: '0.5rem',
+                              borderBottomRightRadius: '0.5rem',
                             }}
                           >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
                         </div>
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          language={match[1]}
-                          PreTag="div"
-                          customStyle={{
-                            margin: 0,
-                            borderTopLeftRadius: 0,
-                            borderTopRightRadius: 0,
-                            borderBottomLeftRadius: '0.5rem',
-                            borderBottomRightRadius: '0.5rem',
-                          }}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    );
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-            </div>
-          )}
-        </div>
+                      );
+                    },
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* AI Message Actions */}
         {!isUser && (
@@ -176,7 +242,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
               onClick={handleCopy}
               title="Copy"
             >
-              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
             
             <Button
@@ -206,7 +272,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("action-btn h-8 w-8", feedback === 'up' && "text-success")}
+              className={cn("action-btn h-8 w-8", feedback === 'up' && "text-green-500")}
               onClick={() => handleFeedback('up')}
               title="Good response"
             >
