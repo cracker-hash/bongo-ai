@@ -11,6 +11,9 @@ export interface StoredChat {
   createdAt: Date;
   updatedAt: Date;
   messageCount: number;
+  projectId: string | null;
+  isPinned: boolean;
+  isArchived: boolean;
 }
 
 export function useChatStorage() {
@@ -32,9 +35,13 @@ export function useChatStorage() {
           mode,
           created_at,
           updated_at,
+          project_id,
+          is_pinned,
+          is_archived,
           messages:messages(count)
         `)
         .eq('user_id', user.id)
+        .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -46,6 +53,9 @@ export function useChatStorage() {
         createdAt: new Date(chat.created_at),
         updatedAt: new Date(chat.updated_at),
         messageCount: chat.messages?.[0]?.count || 0,
+        projectId: chat.project_id,
+        isPinned: chat.is_pinned || false,
+        isArchived: chat.is_archived || false,
       }));
 
       setChats(formattedChats);
@@ -157,8 +167,67 @@ export function useChatStorage() {
 
       if (error) throw error;
       await loadChats();
+      toast.success('Chat renamed');
     } catch (error) {
       console.error('Error updating chat name:', error);
+      toast.error('Failed to rename chat');
+    }
+  }, [isAuthenticated, user, loadChats]);
+
+  // Pin/unpin chat
+  const pinChat = useCallback(async (chatId: string, pinned: boolean) => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('chats')
+        .update({ is_pinned: pinned })
+        .eq('id', chatId);
+
+      if (error) throw error;
+      await loadChats();
+      toast.success(pinned ? 'Chat pinned' : 'Chat unpinned');
+    } catch (error) {
+      console.error('Error pinning chat:', error);
+      toast.error('Failed to update chat');
+    }
+  }, [isAuthenticated, user, loadChats]);
+
+  // Archive/unarchive chat
+  const archiveChat = useCallback(async (chatId: string, archived: boolean) => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('chats')
+        .update({ is_archived: archived })
+        .eq('id', chatId);
+
+      if (error) throw error;
+      await loadChats();
+      toast.success(archived ? 'Chat archived' : 'Chat restored');
+    } catch (error) {
+      console.error('Error archiving chat:', error);
+      toast.error('Failed to update chat');
+    }
+  }, [isAuthenticated, user, loadChats]);
+
+  // Move chat to project
+  const moveChatToProject = useCallback(async (chatId: string, projectId: string | null) => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('chats')
+        .update({ project_id: projectId })
+        .eq('id', chatId);
+
+      if (error) throw error;
+      await loadChats();
+      toast.success(projectId ? 'Moved to project' : 'Removed from project');
+    } catch (error) {
+      console.error('Error moving chat:', error);
+      toast.error('Failed to move chat');
     }
   }, [isAuthenticated, user, loadChats]);
 
@@ -199,6 +268,9 @@ export function useChatStorage() {
     loadMessages,
     saveMessage,
     updateChatName,
+    pinChat,
+    archiveChat,
+    moveChatToProject,
     deleteChat,
   };
 }

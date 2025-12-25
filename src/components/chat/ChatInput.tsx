@@ -6,6 +6,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { MODE_INFO, MODEL_INFO, ChatMode, AIModel } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '@/lib/speechToText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,7 +123,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
   };
 
   const handleVoiceInput = async () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!isSpeechRecognitionSupported()) {
       toast({
         title: "Not supported",
         description: "Voice input is not supported in your browser",
@@ -132,32 +133,34 @@ export function ChatInput({ onSend }: ChatInputProps) {
     }
 
     if (isRecording) {
+      stopSpeechRecognition();
       setIsRecording(false);
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    const started = startSpeechRecognition({
+      onResult: (transcript) => {
+        setInput(prev => prev + (prev ? ' ' : '') + transcript);
+      },
+      onStart: () => setIsRecording(true),
+      onEnd: () => setIsRecording(false),
+      onError: (error) => {
+        setIsRecording(false);
+        toast({
+          title: "Voice Error",
+          description: error,
+          variant: "destructive"
+        });
+      }
+    });
 
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => setIsRecording(false);
-    recognition.onerror = () => {
-      setIsRecording(false);
+    if (!started) {
       toast({
         title: "Error",
-        description: "Failed to recognize speech",
+        description: "Failed to start voice recognition",
         variant: "destructive"
       });
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(prev => prev + (prev ? ' ' : '') + transcript);
-    };
-
-    recognition.start();
+    }
   };
 
   const modes = Object.entries(MODE_INFO) as [ChatMode, typeof MODE_INFO[ChatMode]][];

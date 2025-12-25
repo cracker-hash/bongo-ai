@@ -7,6 +7,7 @@ import {
   Copy, 
   Check, 
   Volume2, 
+  VolumeX,
   RefreshCw, 
   ThumbsUp, 
   ThumbsDown,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { speak, stopSpeaking, cleanTextForSpeech } from '@/lib/textToSpeech';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -44,16 +46,23 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
 
   const handleSpeak = () => {
     if (isSpeaking) {
-      speechSynthesis.cancel();
+      stopSpeaking();
       setIsSpeaking(false);
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(message.content);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
+    speak({
+      text: message.content,
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: (error) => {
+        setIsSpeaking(false);
+        toast({ 
+          description: error.message || 'Failed to read aloud',
+          variant: 'destructive'
+        });
+      }
+    });
   };
 
   const handleFeedback = (type: 'up' | 'down') => {
@@ -250,9 +259,9 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
               size="icon"
               className={cn("action-btn h-8 w-8", isSpeaking && "text-primary")}
               onClick={handleSpeak}
-              title="Read aloud"
+              title={isSpeaking ? "Stop reading" : "Read aloud"}
             >
-              <Volume2 className="h-4 w-4" />
+              {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
             
             {onRegenerate && (

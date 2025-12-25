@@ -1,26 +1,21 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Sun, Moon, Monitor, Bell, BellOff, User, Mail, Lock, Trash2, Save, Check } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Trash2, Save, Volume2, Mic, Shield, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import bongoLogo from '@/assets/bongo-ai-logo.png';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 type Theme = 'dark' | 'light' | 'system';
@@ -29,52 +24,34 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   
-  // Theme state
   const [theme, setTheme] = useState<Theme>('dark');
-  
-  // Notification preferences
-  const [notifications, setNotifications] = useState({
-    chatResponses: true,
-    updates: false,
-    newsletter: false,
-  });
-  
-  // Account form state
+  const [notifications, setNotifications] = useState({ chatResponses: true, updates: false, newsletter: false });
+  const [voiceSettings, setVoiceSettings] = useState({ enabled: true, voiceType: 'default', speed: 1 });
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize theme from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('bongo_theme') as Theme | null;
-    if (stored) {
-      setTheme(stored === 'dark' ? 'dark' : 'light');
-    }
+    if (stored) setTheme(stored === 'dark' ? 'dark' : 'light');
   }, []);
 
-  // Initialize user data
   useEffect(() => {
-    if (user) {
-      setDisplayName(user.name || '');
-      setEmail(user.email || '');
-    }
+    if (user) { setDisplayName(user.name || ''); setEmail(user.email || ''); }
   }, [user]);
 
-  // Load notification preferences from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('bongo_notifications');
-    if (stored) {
-      try {
-        setNotifications(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error parsing notification preferences');
-      }
-    }
+    if (stored) try { setNotifications(JSON.parse(stored)); } catch {}
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('bongo_voice');
+    if (stored) try { setVoiceSettings(JSON.parse(stored)); } catch {}
   }, []);
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
-    
     if (newTheme === 'system') {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.classList.toggle('light', !prefersDark);
@@ -92,47 +69,28 @@ export default function Settings() {
     toast({ description: 'Notification preferences saved' });
   };
 
-  const handleSaveProfile = async () => {
-    if (!isAuthenticated) {
-      toast({ description: 'Please sign in to update your profile', variant: 'destructive' });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { display_name: displayName }
-      });
-
-      if (error) throw error;
-      toast({ description: 'Profile updated successfully' });
-    } catch (error) {
-      toast({ description: 'Failed to update profile', variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleVoiceChange = (key: keyof typeof voiceSettings, value: any) => {
+    const updated = { ...voiceSettings, [key]: value };
+    setVoiceSettings(updated);
+    localStorage.setItem('bongo_voice', JSON.stringify(updated));
   };
 
-  const handleDeleteAccount = async () => {
-    toast({ 
-      description: 'Account deletion requires manual request. Please contact support.',
-      variant: 'destructive'
-    });
+  const handleSaveProfile = async () => {
+    if (!isAuthenticated) { toast({ description: 'Please sign in', variant: 'destructive' }); return; }
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { display_name: displayName } });
+      if (error) throw error;
+      toast({ description: 'Profile updated' });
+    } catch { toast({ description: 'Failed to update profile', variant: 'destructive' }); }
+    finally { setIsSaving(false); }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto flex items-center gap-4 h-16 px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            className="shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')}><ArrowLeft className="h-5 w-5" /></Button>
           <div className="flex items-center gap-3">
             <img src={bongoLogo} alt="Bongo AI" className="h-8 w-8" />
             <h1 className="text-xl font-semibold">Settings</h1>
@@ -141,217 +99,91 @@ export default function Settings() {
       </header>
 
       <main className="max-w-4xl mx-auto py-8 px-4 space-y-8">
-        {/* Theme Customization */}
+        {/* Theme */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sun className="h-5 w-5" />
-              Appearance
-            </CardTitle>
-            <CardDescription>
-              Customize how Bongo AI looks on your device
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <CardHeader><CardTitle className="flex items-center gap-2"><Sun className="h-5 w-5" />Appearance</CardTitle></CardHeader>
+          <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <Button
-                variant={theme === 'light' ? 'default' : 'outline'}
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => handleThemeChange('light')}
-              >
-                <Sun className="h-6 w-6" />
-                <span className="text-sm">Light</span>
-                {theme === 'light' && <Check className="h-4 w-4 absolute top-2 right-2" />}
-              </Button>
-              <Button
-                variant={theme === 'dark' ? 'default' : 'outline'}
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => handleThemeChange('dark')}
-              >
-                <Moon className="h-6 w-6" />
-                <span className="text-sm">Dark</span>
-                {theme === 'dark' && <Check className="h-4 w-4 absolute top-2 right-2" />}
-              </Button>
-              <Button
-                variant={theme === 'system' ? 'default' : 'outline'}
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => handleThemeChange('system')}
-              >
-                <Monitor className="h-6 w-6" />
-                <span className="text-sm">System</span>
-                {theme === 'system' && <Check className="h-4 w-4 absolute top-2 right-2" />}
-              </Button>
+              {(['light', 'dark', 'system'] as Theme[]).map(t => (
+                <Button key={t} variant={theme === t ? 'default' : 'outline'} className="flex flex-col items-center gap-2 h-auto py-4" onClick={() => handleThemeChange(t)}>
+                  {t === 'light' ? <Sun className="h-6 w-6" /> : t === 'dark' ? <Moon className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
+                  <span className="text-sm capitalize">{t}</span>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Notification Preferences */}
+        {/* Voice Settings */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Notifications
-            </CardTitle>
-            <CardDescription>
-              Manage your notification preferences
-            </CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Volume2 className="h-5 w-5" />Voice Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Chat Responses</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when AI responds to your messages
-                </p>
-              </div>
-              <Switch
-                checked={notifications.chatResponses}
-                onCheckedChange={(checked) => handleNotificationChange('chatResponses', checked)}
-              />
+              <div><Label>Voice Output</Label><p className="text-sm text-muted-foreground">Enable text-to-speech</p></div>
+              <Switch checked={voiceSettings.enabled} onCheckedChange={(v) => handleVoiceChange('enabled', v)} />
             </div>
             <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Product Updates</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive updates about new features
-                </p>
-              </div>
-              <Switch
-                checked={notifications.updates}
-                onCheckedChange={(checked) => handleNotificationChange('updates', checked)}
-              />
+            <div className="space-y-2">
+              <Label>Voice Type</Label>
+              <Select value={voiceSettings.voiceType} onValueChange={(v) => handleVoiceChange('voiceType', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Newsletter</Label>
-                <p className="text-sm text-muted-foreground">
-                  Weekly tips and AI insights
-                </p>
-              </div>
-              <Switch
-                checked={notifications.newsletter}
-                onCheckedChange={(checked) => handleNotificationChange('newsletter', checked)}
-              />
+            <div className="space-y-2">
+              <Label>Speech Speed: {voiceSettings.speed}x</Label>
+              <Slider value={[voiceSettings.speed]} min={0.5} max={2} step={0.1} onValueChange={([v]) => handleVoiceChange('speed', v)} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Account Management */}
+        {/* Notifications */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Account
-            </CardTitle>
-            <CardDescription>
-              Manage your account settings
-            </CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" />Notifications</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {Object.entries({ chatResponses: 'Chat Responses', updates: 'Product Updates', newsletter: 'Newsletter' }).map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between">
+                <Label>{label}</Label>
+                <Switch checked={notifications[key as keyof typeof notifications]} onCheckedChange={(v) => handleNotificationChange(key as any, v)} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Account */}
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Account</CardTitle></CardHeader>
           <CardContent className="space-y-6">
             {isAuthenticated ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
-                  <Input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    value={email}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Email cannot be changed
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleSaveProfile} 
-                  disabled={isSaving}
-                  className="gradient-bg"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-
-                <Separator className="my-6" />
-
-                <div className="space-y-4">
-                  <h4 className="font-medium text-destructive flex items-center gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    Danger Zone
-                  </h4>
-                  <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-destructive/5">
-                    <div>
-                      <p className="font-medium">Delete Account</p>
-                      <p className="text-sm text-muted-foreground">
-                        Permanently delete your account and all data
-                      </p>
-                    </div>
+                <div className="space-y-2"><Label>Display Name</Label><Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Email</Label><Input value={email} disabled className="bg-muted" /></div>
+                <Button onClick={handleSaveProfile} disabled={isSaving} className="gradient-bg"><Save className="h-4 w-4 mr-2" />{isSaving ? 'Saving...' : 'Save'}</Button>
+                <Separator />
+                <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="font-medium text-destructive">Delete Account</p><p className="text-sm text-muted-foreground">Permanently delete your account</p></div>
                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
+                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm">Delete</Button></AlertDialogTrigger>
                       <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete your
-                            account and remove all your data from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete Account
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
+                        <AlertDialogHeader><AlertDialogTitle>Delete Account?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive">Delete</AlertDialogAction></AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="text-center py-8">
-                <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4">
-                  Sign in to manage your account
-                </p>
-                <Button onClick={() => navigate('/')} className="gradient-bg">
-                  Go to Sign In
-                </Button>
-              </div>
+              <div className="text-center py-8"><User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" /><p className="text-muted-foreground mb-4">Sign in to manage your account</p><Button onClick={() => navigate('/')} className="gradient-bg">Go to Sign In</Button></div>
             )}
           </CardContent>
         </Card>
 
-        {/* App Info */}
-        <Card>
-          <CardContent className="py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={bongoLogo} alt="Bongo AI" className="h-10 w-10" />
-                <div>
-                  <p className="font-medium">Bongo AI</p>
-                  <p className="text-sm text-muted-foreground">Version 1.0.0</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Made with ❤️ in Tanzania
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-6"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><img src={bongoLogo} alt="Bongo AI" className="h-10 w-10" /><div><p className="font-medium">Bongo AI</p><p className="text-sm text-muted-foreground">Version 1.0.0</p></div></div><p className="text-xs text-muted-foreground">Made with ❤️ in Tanzania</p></div></CardContent></Card>
       </main>
     </div>
   );

@@ -22,6 +22,10 @@ interface ChatContextType {
   createNewChat: () => Promise<void>;
   selectChat: (id: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
+  renameChat: (id: string, name: string) => Promise<void>;
+  pinChat: (id: string, pinned: boolean) => Promise<void>;
+  archiveChat: (id: string, archived: boolean) => Promise<void>;
+  moveChatToProject: (id: string, projectId: string | null) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -45,6 +49,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     createChat,
     loadMessages,
     saveMessage,
+    updateChatName,
+    pinChat: pinChatStorage,
+    archiveChat: archiveChatStorage,
+    moveChatToProject: moveChatToProjectStorage,
     deleteChat: deleteChatStorage,
   } = useChatStorage();
 
@@ -102,6 +110,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setMessages([]);
     }
   }, [deleteChatStorage, currentChatId]);
+
+  const renameChat = useCallback(async (id: string, name: string) => {
+    await updateChatName(id, name);
+  }, [updateChatName]);
+
+  const pinChat = useCallback(async (id: string, pinned: boolean) => {
+    await pinChatStorage(id, pinned);
+  }, [pinChatStorage]);
+
+  const archiveChat = useCallback(async (id: string, archived: boolean) => {
+    await archiveChatStorage(id, archived);
+  }, [archiveChatStorage]);
+
+  const moveChatToProject = useCallback(async (id: string, projectId: string | null) => {
+    await moveChatToProjectStorage(id, projectId);
+  }, [moveChatToProjectStorage]);
 
   const sendMessage = useCallback(async (content: string, images?: string[]) => {
     // Check if this is an image generation request
@@ -257,6 +281,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         createNewChat,
         selectChat,
         deleteChat,
+        renameChat,
+        pinChat,
+        archiveChat,
+        moveChatToProject,
       }}
     >
       {children}
