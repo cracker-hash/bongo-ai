@@ -67,7 +67,7 @@ export function useChatStorage() {
   }, [isAuthenticated, user]);
 
   // Create a new chat
-  const createChat = useCallback(async (name: string, mode: ChatMode): Promise<string | null> => {
+  const createChat = useCallback(async (name: string, mode: ChatMode, projectId?: string): Promise<string | null> => {
     if (!isAuthenticated || !user) return null;
 
     try {
@@ -77,6 +77,7 @@ export function useChatStorage() {
           user_id: user.id,
           name,
           mode,
+          project_id: projectId || null,
         })
         .select('id')
         .single();

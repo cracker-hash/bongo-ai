@@ -20,6 +20,7 @@ interface ChatContextType {
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
   createNewChat: () => Promise<void>;
+  createChatForProject: (projectId: string, projectName: string) => Promise<string | null>;
   selectChat: (id: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
   renameChat: (id: string, name: string) => Promise<void>;
@@ -88,6 +89,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setCurrentChatId(null);
     // Chat will be created when first message is sent
   }, [isAuthenticated]);
+
+  const createChatForProject = useCallback(async (projectId: string, projectName: string): Promise<string | null> => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to save chats');
+      return null;
+    }
+    
+    // Create a new chat directly linked to the project
+    const chatId = await createChat(projectName, currentMode, projectId);
+    if (chatId) {
+      setCurrentChatId(chatId);
+      setMessages([]);
+      return chatId;
+    }
+    return null;
+  }, [isAuthenticated, createChat, currentMode]);
 
   const selectChat = useCallback(async (id: string) => {
     if (!isAuthenticated) return;
@@ -279,6 +296,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         clearMessages,
         setSidebarOpen,
         createNewChat,
+        createChatForProject,
         selectChat,
         deleteChat,
         renameChat,
