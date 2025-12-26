@@ -69,6 +69,7 @@ export function Sidebar() {
     selectChat,
     deleteChat,
     createNewChat,
+    createChatForProject,
     isLoadingChats,
     clearMessages,
     renameChat,
@@ -79,6 +80,17 @@ export function Sidebar() {
   } = useChat();
   const { isAuthenticated, setShowAuthModal, user, logout } = useAuth();
   const { projects, createProject } = useProjects();
+
+  // Handle creating project and auto-open chat
+  const handleCreateProject = async (name: string, icon: string, description?: string) => {
+    const projectId = await createProject(name, icon, description);
+    if (projectId) {
+      // Auto-create and open a chat for this project
+      await createChatForProject(projectId, name);
+      // Expand the project in the sidebar
+      setExpandedProjects(prev => new Set([...prev, projectId]));
+    }
+  };
 
   // Collect all images from messages
   const allImages = useMemo(() => {
@@ -518,9 +530,7 @@ export function Sidebar() {
       <CreateProjectDialog
         open={showCreateProject}
         onOpenChange={setShowCreateProject}
-        onCreate={async (name, icon, description) => {
-          await createProject(name, icon, description);
-        }}
+        onCreate={handleCreateProject}
       />
     </>
   );

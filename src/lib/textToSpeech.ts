@@ -56,13 +56,33 @@ interface SpeakOptions {
   voice?: string;
   rate?: number;
   pitch?: number;
+  lang?: string;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * Speaks the given text using the Web Speech API
+ * Detects if text contains Swahili words
+ */
+function containsSwahili(text: string): boolean {
+  // Common Swahili words and patterns
+  const swahiliPatterns = [
+    /\b(habari|jambo|karibu|asante|sana|ndio|hapana|ndiyo|kwa|na|ya|wa|ni|la|za)\b/i,
+    /\b(mimi|wewe|yeye|sisi|ninyi|wao)\b/i,
+    /\b(nyumba|mtu|watu|mtoto|watoto|mama|baba|kaka|dada)\b/i,
+    /\b(chakula|maji|kazi|shule|hospitali|duka|soko)\b/i,
+    /\b(sasa|kesho|jana|leo|usiku|asubuhi|jioni)\b/i,
+    /\b(nzuri|mbaya|kubwa|ndogo|mzuri|vizuri)\b/i,
+    /\b(kwenda|kuja|kula|kunywa|kulala|kusoma)\b/i,
+    /\b(rafiki|jirani|mwalimu|daktari|askari)\b/i,
+  ];
+  
+  return swahiliPatterns.some(pattern => pattern.test(text));
+}
+
+/**
+ * Speaks the given text using the Web Speech API with Swahili support
  */
 export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
   if (!('speechSynthesis' in window)) {
@@ -79,8 +99,45 @@ export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
   // Get available voices
   const voices = speechSynthesis.getVoices();
   
+  // Detect language - check if text contains Swahili
+  const isSwahili = options.lang === 'sw' || containsSwahili(cleanedText);
+  
   // Try to find a matching voice
-  if (options.voice) {
+  if (isSwahili) {
+    // Look for Swahili voice first
+    const swahiliVoice = voices.find(v => 
+      v.lang.toLowerCase().includes('sw') || 
+      v.lang.toLowerCase().includes('swahili')
+    );
+    
+    if (swahiliVoice) {
+      utterance.voice = swahiliVoice;
+      utterance.lang = swahiliVoice.lang;
+    } else {
+      // Fallback: Use a clear English voice with slower rate for Swahili
+      // African English voices or general English voices work better
+      const africanVoice = voices.find(v => 
+        v.lang.includes('en-KE') || // Kenyan English
+        v.lang.includes('en-TZ') || // Tanzanian English  
+        v.lang.includes('en-ZA') || // South African English
+        v.lang.includes('en-NG')    // Nigerian English
+      );
+      
+      if (africanVoice) {
+        utterance.voice = africanVoice;
+      } else {
+        // Use any English voice but slow down for clarity
+        const englishVoice = voices.find(v => v.lang.startsWith('en'));
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+      }
+      utterance.lang = 'sw-TZ'; // Set Swahili language hint
+    }
+    
+    // Slower rate for clearer Swahili pronunciation
+    utterance.rate = options.rate ?? 0.85;
+  } else if (options.voice) {
     const matchingVoice = voices.find(v => 
       v.name.toLowerCase().includes(options.voice!.toLowerCase()) ||
       v.lang.toLowerCase().includes(options.voice!.toLowerCase())
@@ -88,10 +145,12 @@ export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
     if (matchingVoice) {
       utterance.voice = matchingVoice;
     }
+    utterance.rate = options.rate ?? 1;
+  } else {
+    utterance.rate = options.rate ?? 1;
   }
 
-  // Apply settings
-  utterance.rate = options.rate ?? 1;
+  // Apply other settings
   utterance.pitch = options.pitch ?? 1;
 
   // Event handlers
