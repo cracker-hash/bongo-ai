@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { OfflineIndicator, OnlineIndicator } from "./components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
@@ -14,6 +15,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineIndicator />
+      <OnlineIndicator />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

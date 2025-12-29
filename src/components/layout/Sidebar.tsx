@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProjects, Project } from '@/hooks/useProjects';
 import { ChatMode, MODE_INFO } from '@/types/chat';
 import { cn } from '@/lib/utils';
-import bongoLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { ChatMenu } from '@/components/chat/ChatMenu';
@@ -204,12 +204,12 @@ export function Sidebar() {
         <div className="flex items-center justify-between p-4 border-b border-sidebar-border/50">
           <div className="flex items-center gap-2.5">
             <img 
-              src={bongoLogo} 
-              alt="Bongo AI" 
+              src={wiserLogo} 
+              alt="Wiser AI" 
               className="h-8 w-8 rounded-lg object-contain"
             />
             <span className="font-semibold text-lg text-sidebar-foreground">
-              Bongo AI
+              Wiser AI
             </span>
           </div>
           <Button

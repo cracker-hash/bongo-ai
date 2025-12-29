@@ -1,0 +1,33 @@
+{
+  "name": "Wiser AI - Your Intelligent African Assistant",
+  "short_name": "Wiser AI",
+  "description": "An intelligent AI assistant reflecting African innovation. Created in Tanzania by Tito Oscar Mwaisengela.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/wiser-ai-favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/wiser-ai-favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "education", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "url": "/",
+      "icons": [{ "src": "/wiser-ai-favicon.png", "sizes": "96x96" }]
+    }
+  ]
+}
