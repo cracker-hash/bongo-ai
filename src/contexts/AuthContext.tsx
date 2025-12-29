@@ -27,7 +27,7 @@ function mapSupabaseUser(supabaseUser: SupabaseUser | null): User | null {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email || '',
-    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+    name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.display_name || supabaseUser.email?.split('@')[0] || 'User',
     avatar: supabaseUser.user_metadata?.avatar_url,
   };
 }
