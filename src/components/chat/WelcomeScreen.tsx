@@ -2,7 +2,7 @@ import { Sparkles, GraduationCap, Code, Gamepad2, Search, HelpCircle, MessageCir
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, MODE_INFO } from '@/types/chat';
-import wiserLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { cn } from '@/lib/utils';
 
 const quickPrompts = [

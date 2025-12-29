@@ -383,7 +383,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Wiser AI can analyze images and generate new ones. Try voice chat!
+          Wiser AI can make mistakes. Check important info.
         </p>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Message } from '@/types/chat';
 import { cn } from '@/lib/utils';
-import wiserLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { 
   User, 
   Copy, 
