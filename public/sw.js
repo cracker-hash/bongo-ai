@@ -82,9 +82,49 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOfflineMessages() {
-  // This will be handled by IndexedDB sync in the main app
-  const clients = await self.clients.matchAll();
+  // Notify all clients to sync their messages
+  const clients = await self.clients.matchAll({ type: 'window' });
   clients.forEach(client => {
     client.postMessage({ type: 'SYNC_MESSAGES' });
   });
 }
+
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() || {};
+  
+  const options = {
+    body: data.body || 'New message from Wiser AI',
+    icon: '/wiser-ai-favicon.png',
+    badge: '/wiser-ai-favicon.png',
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || '/'
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Wiser AI', options)
+  );
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      const url = event.notification.data?.url || '/';
+      
+      // Check if already open
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // Open new window
+      return clients.openWindow(url);
+    })
+  );
+});

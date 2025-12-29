@@ -1,27 +1,55 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, Wifi } from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isOnline, onOnlineStatusChange } from '@/lib/offlineStorage';
+import { isOnline, onOnlineStatusChange, getPendingMessages } from '@/lib/offlineStorage';
 
 export function OfflineIndicator() {
   const [online, setOnline] = useState(isOnline());
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onOnlineStatusChange(setOnline);
-    return unsubscribe;
+    
+    // Check for pending messages
+    const checkPending = async () => {
+      try {
+        const pending = await getPendingMessages();
+        setPendingCount(pending.length);
+      } catch {}
+    };
+    
+    checkPending();
+    const interval = setInterval(checkPending, 5000);
+    
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
-  if (online) return null;
+  if (online && pendingCount === 0) return null;
 
   return (
     <div className={cn(
       "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
-      "bg-amber-500/90 text-amber-950 px-4 py-2 rounded-full",
+      online ? "bg-primary/90 text-primary-foreground" : "bg-amber-500/90 text-amber-950",
+      "px-4 py-2 rounded-full",
       "flex items-center gap-2 text-sm font-medium shadow-lg",
       "animate-in fade-in slide-in-from-bottom-4"
     )}>
-      <WifiOff className="h-4 w-4" />
-      <span>You're offline - viewing cached content</span>
+      {online ? (
+        <>
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Syncing {pendingCount} message{pendingCount > 1 ? 's' : ''}...</span>
+        </>
+      ) : (
+        <>
+          <WifiOff className="h-4 w-4" />
+          <span>
+            Offline{pendingCount > 0 ? ` - ${pendingCount} pending` : ' - viewing cached content'}
+          </span>
+        </>
+      )}
     </div>
   );
 }
