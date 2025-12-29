@@ -60,9 +60,9 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text,
-          model_id: 'eleven_multilingual_v2', // Best for Swahili and other languages
-          output_format: 'mp3_44100_128',
+          text: text.slice(0, 2000), // Limit text for faster response
+          model_id: 'eleven_turbo_v2_5', // Faster model for lower latency
+          output_format: 'mp3_22050_32', // Smaller file for faster transfer
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,

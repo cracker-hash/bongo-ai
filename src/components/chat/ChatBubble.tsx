@@ -12,11 +12,14 @@ import {
   ThumbsUp, 
   ThumbsDown,
   Download,
-  ZoomIn
+  ZoomIn,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { speak, stopSpeaking, getVoiceSettings } from '@/lib/textToSpeech';
+import { submitFeedback } from '@/lib/feedbackAnalytics';
+import { useChat } from '@/contexts/ChatContext';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -36,6 +39,8 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isLoadingTTS, setIsLoadingTTS] = useState(false);
+  const { currentChatId } = useChat();
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -48,6 +53,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
     if (isSpeaking) {
       stopSpeaking();
       setIsSpeaking(false);
+      setIsLoadingTTS(false);
       return;
     }
 
@@ -58,15 +64,25 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
       return;
     }
 
+    // Show loading immediately for better UX
+    setIsLoadingTTS(true);
+
     speak({
       text: message.content,
       voice: settings.voiceId,
       rate: settings.speed,
       useElevenLabs: settings.useElevenLabs,
-      onStart: () => setIsSpeaking(true),
-      onEnd: () => setIsSpeaking(false),
+      onStart: () => {
+        setIsLoadingTTS(false);
+        setIsSpeaking(true);
+      },
+      onEnd: () => {
+        setIsSpeaking(false);
+        setIsLoadingTTS(false);
+      },
       onError: (error) => {
         setIsSpeaking(false);
+        setIsLoadingTTS(false);
         toast({ 
           description: error.message || 'Failed to read aloud',
           variant: 'destructive'
@@ -75,8 +91,16 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
     });
   };
 
-  const handleFeedback = (type: 'up' | 'down') => {
+  const handleFeedback = async (type: 'up' | 'down') => {
     setFeedback(type);
+    
+    // Save feedback to analytics
+    await submitFeedback({
+      messageId: message.id,
+      chatId: currentChatId || undefined,
+      feedbackType: type === 'up' ? 'positive' : 'negative'
+    });
+    
     toast({ 
       description: type === 'up' ? 'Thanks for the feedback!' : "We'll try to improve" 
     });
@@ -267,11 +291,18 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("action-btn h-8 w-8", isSpeaking && "text-primary")}
+              className={cn("action-btn h-8 w-8", (isSpeaking || isLoadingTTS) && "text-primary")}
               onClick={handleSpeak}
-              title={isSpeaking ? "Stop reading" : "Read aloud"}
+              title={isSpeaking ? "Stop reading" : isLoadingTTS ? "Loading..." : "Read aloud"}
+              disabled={isLoadingTTS}
             >
-              {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              {isLoadingTTS ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isSpeaking ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
             </Button>
             
             {onRegenerate && (
