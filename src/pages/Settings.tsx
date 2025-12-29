@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import wiserLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { ELEVENLABS_VOICES, getVoiceSettings, saveVoiceSettings, speak, stopSpeaking } from '@/lib/textToSpeech';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -222,7 +222,7 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Notifications */}
+        {/* Notifications & Push */}
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" />Notifications</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -232,6 +232,29 @@ export default function Settings() {
                 <Switch checked={notifications[key as keyof typeof notifications]} onCheckedChange={(v) => handleNotificationChange(key as any, v)} />
               </div>
             ))}
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Push Notifications</Label>
+                <p className="text-sm text-muted-foreground">Get notified even when the app is closed</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  const { requestNotificationPermission, subscribeToPushNotifications } = await import('@/lib/pushNotifications');
+                  const granted = await requestNotificationPermission();
+                  if (granted) {
+                    await subscribeToPushNotifications();
+                    toast({ description: 'Push notifications enabled!' });
+                  } else {
+                    toast({ description: 'Permission denied', variant: 'destructive' });
+                  }
+                }}
+              >
+                Enable
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
