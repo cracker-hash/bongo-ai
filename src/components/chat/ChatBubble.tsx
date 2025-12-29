@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Message } from '@/types/chat';
 import { cn } from '@/lib/utils';
-import bongoLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/bongo-ai-logo.png';
 import { 
   User, 
   Copy, 
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { speak, stopSpeaking, cleanTextForSpeech } from '@/lib/textToSpeech';
+import { speak, stopSpeaking, getVoiceSettings } from '@/lib/textToSpeech';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -51,8 +51,18 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
       return;
     }
 
+    const settings = getVoiceSettings();
+    
+    if (!settings.enabled) {
+      toast({ description: 'Voice output is disabled. Enable it in Settings.' });
+      return;
+    }
+
     speak({
       text: message.content,
+      voice: settings.voiceId,
+      rate: settings.speed,
+      useElevenLabs: settings.useElevenLabs,
       onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
       onError: (error) => {
@@ -76,7 +86,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
     try {
       const link = document.createElement('a');
       link.href = imageUrl;
-      link.download = `bongo-ai-image-${Date.now()}.png`;
+      link.download = `wiser-ai-image-${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -106,8 +116,8 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
           <User className="h-5 w-5 text-chat-user-foreground" />
         ) : (
           <img 
-            src={bongoLogo} 
-            alt="Bongo AI" 
+            src={wiserLogo} 
+            alt="Wiser AI" 
             className="w-full h-full object-cover"
           />
         )}
@@ -117,7 +127,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
       <div className={cn("flex-1 max-w-[85%] space-y-2", isUser && "flex flex-col items-end")}>
         {/* Name and time */}
         <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", isUser && "flex-row-reverse")}>
-          <span className="font-medium">{isUser ? 'You' : 'Bongo AI'}</span>
+          <span className="font-medium">{isUser ? 'You' : 'Wiser AI'}</span>
           <span>·</span>
           <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
