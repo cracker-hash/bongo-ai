@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent, ChangeEvent } from 'react';
-import { Send, ChevronDown, Paperclip, Mic, Square, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Send, ChevronDown, Paperclip, Mic, Square, X, Image as ImageIcon, Loader2, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useChat } from '@/contexts/ChatContext';
@@ -7,6 +7,7 @@ import { MODE_INFO, MODEL_INFO, ChatMode, AIModel } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '@/lib/speechToText';
+import { VoiceConversation } from './VoiceConversation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [showVoiceChat, setShowVoiceChat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { currentMode, currentModel, setCurrentMode, setCurrentModel, isLoading } = useChat();
@@ -349,6 +351,23 @@ export function ChatInput({ onSend }: ChatInputProps) {
                   <TooltipContent>Generate image</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              {/* Voice conversation button */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                      onClick={() => setShowVoiceChat(true)}
+                    >
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Voice conversation</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             {/* Send button */}
@@ -364,9 +383,14 @@ export function ChatInput({ onSend }: ChatInputProps) {
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Bongo AI can analyze images and generate new ones. Try it out!
+          Wiser AI can analyze images and generate new ones. Try voice chat!
         </p>
       </div>
+
+      {/* Voice Conversation Modal */}
+      {showVoiceChat && (
+        <VoiceConversation onClose={() => setShowVoiceChat(false)} />
+      )}
     </div>
   );
 }

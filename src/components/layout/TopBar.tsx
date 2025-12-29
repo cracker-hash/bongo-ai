@@ -2,7 +2,7 @@ import { Menu, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChat } from '@/contexts/ChatContext';
 import { useState, useEffect } from 'react';
-import bongoLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 
 export function TopBar() {
   const { sidebarOpen, setSidebarOpen } = useChat();
@@ -10,7 +10,7 @@ export function TopBar() {
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
-    const stored = localStorage.getItem('bongo_theme');
+    const stored = localStorage.getItem('wiser_theme');
     if (stored) {
       const dark = stored === 'dark';
       setIsDark(dark);
@@ -22,7 +22,7 @@ export function TopBar() {
     const newIsDark = !isDark;
     setIsDark(newIsDark);
     document.documentElement.classList.toggle('light', !newIsDark);
-    localStorage.setItem('bongo_theme', newIsDark ? 'dark' : 'light');
+    localStorage.setItem('wiser_theme', newIsDark ? 'dark' : 'light');
   };
 
   return (
@@ -43,12 +43,12 @@ export function TopBar() {
           
           <div className="flex items-center gap-2">
             <img 
-              src={bongoLogo} 
-              alt="Bongo AI" 
+              src={wiserLogo} 
+              alt="Wiser AI" 
               className="h-9 w-9 rounded-lg object-contain"
             />
             <span className="font-semibold text-lg hidden sm:block">
-              Bongo AI
+              Wiser AI
             </span>
           </div>
         </div>
