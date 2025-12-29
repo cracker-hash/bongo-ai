@@ -66,7 +66,7 @@ export function ChatContainer() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-medium text-sm">Bongo AI</span>
+          <span className="font-medium text-sm">Wiser AI</span>
         </div>
       )}
 
