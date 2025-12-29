@@ -20,6 +20,7 @@ import { toast } from '@/hooks/use-toast';
 import { speak, stopSpeaking, getVoiceSettings } from '@/lib/textToSpeech';
 import { submitFeedback } from '@/lib/feedbackAnalytics';
 import { useChat } from '@/contexts/ChatContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -41,6 +42,7 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoadingTTS, setIsLoadingTTS] = useState(false);
   const { currentChatId } = useChat();
+  const { user } = useAuth();
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -137,7 +139,15 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
         )}
       >
         {isUser ? (
-          <User className="h-5 w-5 text-chat-user-foreground" />
+          user?.avatar ? (
+            <img 
+              src={user.avatar} 
+              alt="You" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <User className="h-5 w-5 text-chat-user-foreground" />
+          )
         ) : (
           <img 
             src={wiserLogo} 

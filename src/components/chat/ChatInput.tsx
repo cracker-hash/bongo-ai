@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent, ChangeEvent } from 'react';
-import { Send, ChevronDown, Paperclip, Mic, Square, X, Image as ImageIcon, Loader2, Phone } from 'lucide-react';
+import { Send, ChevronDown, Paperclip, Mic, Square, X, Loader2, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useChat } from '@/contexts/ChatContext';
@@ -331,26 +331,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        const prompt = window.prompt('Describe the image you want to generate:');
-                        if (prompt) {
-                          setInput(`Generate an image: ${prompt}`);
-                        }
-                      }}
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Generate image</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
 
               {/* Voice conversation button */}
               <TooltipProvider>

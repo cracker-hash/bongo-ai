@@ -26,9 +26,9 @@ import { ChatMode, MODE_INFO } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import { ChatMenu } from '@/components/chat/ChatMenu';
 import { CreateProjectDialog } from '@/components/layout/CreateProjectDialog';
+import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useState, useMemo } from 'react';
 import {
   Collapsible,
@@ -51,7 +51,6 @@ const modeIcons: Record<ChatMode, React.ReactNode> = {
 };
 
 export function Sidebar() {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -60,6 +59,7 @@ export function Sidebar() {
   const [imagesExpanded, setImagesExpanded] = useState(true);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [chatsExpanded, setChatsExpanded] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   
   const { 
     sidebarOpen, 
@@ -190,6 +190,22 @@ export function Sidebar() {
   );
 
   if (!sidebarOpen) return null;
+
+  // Show settings panel instead of main sidebar
+  if (showSettings) {
+    return (
+      <>
+        {/* Mobile overlay */}
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+        <aside className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar z-40 flex flex-col animate-slide-in-left border-r border-sidebar-border/50">
+          <SettingsPanel onBack={() => setShowSettings(false)} />
+        </aside>
+      </>
+    );
+  }
 
   return (
     <>
@@ -494,7 +510,7 @@ export function Sidebar() {
                 variant="ghost"
                 size="sm"
                 className="flex-1 gap-2 h-9 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                onClick={() => navigate('/settings')}
+                onClick={() => setShowSettings(true)}
               >
                 <Settings className="h-4 w-4" />
                 Settings
