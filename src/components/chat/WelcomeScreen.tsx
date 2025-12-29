@@ -2,7 +2,7 @@ import { Sparkles, GraduationCap, Code, Gamepad2, Search, HelpCircle, MessageCir
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, MODE_INFO } from '@/types/chat';
-import bongoLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/bongo-ai-logo.png';
 import { cn } from '@/lib/utils';
 
 const quickPrompts = [
@@ -63,18 +63,18 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
       <div className="relative mb-8">
         <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full scale-150" />
         <img 
-          src={bongoLogo} 
-          alt="Bongo AI" 
+          src={wiserLogo} 
+          alt="Wiser AI" 
           className="relative h-24 w-24 object-contain"
         />
       </div>
       
       <h1 className="text-3xl md:text-4xl font-bold mb-3 text-center">
-        Welcome to <span className="gradient-text">Bongo AI</span>
+        Welcome to <span className="gradient-text">Wiser AI</span>
       </h1>
       
       <p className="text-muted-foreground text-center max-w-md mb-10">
-        Your intelligent assistant for learning, coding, research, and more.
+        Your intelligent assistant for learning, coding, research, and more. Created in Tanzania by Tito Oscar Mwaisengela.
       </p>
 
       {/* Mode badges */}

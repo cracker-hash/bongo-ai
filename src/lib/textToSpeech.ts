@@ -1,4 +1,4 @@
-// Text-to-Speech utility with proper text cleaning
+// Text-to-Speech utility with ElevenLabs integration and Swahili support
 
 /**
  * Cleans text for speech synthesis by removing markdown, symbols, and formatting
@@ -11,12 +11,12 @@ export function cleanTextForSpeech(text: string): string {
   cleaned = cleaned.replace(/`[^`]+`/g, ' code ');
 
   // Remove markdown formatting
-  cleaned = cleaned.replace(/#{1,6}\s*/g, ''); // Headers
-  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1'); // Bold
-  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1'); // Italic
-  cleaned = cleaned.replace(/__([^_]+)__/g, '$1'); // Bold
-  cleaned = cleaned.replace(/_([^_]+)_/g, '$1'); // Italic
-  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1'); // Strikethrough
+  cleaned = cleaned.replace(/#{1,6}\s*/g, '');
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
 
   // Remove bullet points and list markers
   cleaned = cleaned.replace(/^\s*[-*+]\s+/gm, '');
@@ -37,7 +37,7 @@ export function cleanTextForSpeech(text: string): string {
   // Remove special characters and symbols
   cleaned = cleaned.replace(/[#*_~`|<>{}[\]()\\]/g, '');
 
-  // Remove emojis (basic pattern)
+  // Remove emojis
   cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}]/gu, '');
   cleaned = cleaned.replace(/[\u{1F300}-\u{1F5FF}]/gu, '');
   cleaned = cleaned.replace(/[\u{1F680}-\u{1F6FF}]/gu, '');
@@ -51,22 +51,116 @@ export function cleanTextForSpeech(text: string): string {
   return cleaned;
 }
 
+export interface VoiceOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
+// Available ElevenLabs voices
+export const ELEVENLABS_VOICES: VoiceOption[] = [
+  { id: 'sarah', name: 'Sarah', description: 'Female - Clear and warm' },
+  { id: 'rachel', name: 'Rachel', description: 'Female - Professional' },
+  { id: 'alice', name: 'Alice', description: 'Female - Friendly' },
+  { id: 'lily', name: 'Lily', description: 'Female - Soft and calm' },
+  { id: 'matilda', name: 'Matilda', description: 'Female - Expressive' },
+  { id: 'jessica', name: 'Jessica', description: 'Female - Conversational' },
+  { id: 'roger', name: 'Roger', description: 'Male - Deep and clear' },
+  { id: 'brian', name: 'Brian', description: 'Male - Natural' },
+  { id: 'george', name: 'George', description: 'Male - British accent' },
+  { id: 'eric', name: 'Eric', description: 'Male - Friendly' },
+  { id: 'chris', name: 'Chris', description: 'Male - Energetic' },
+  { id: 'daniel', name: 'Daniel', description: 'Male - Authoritative' },
+];
+
 interface SpeakOptions {
   text: string;
   voice?: string;
   rate?: number;
   pitch?: number;
   lang?: string;
+  useElevenLabs?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: Error) => void;
+}
+
+let currentAudio: HTMLAudioElement | null = null;
+
+/**
+ * Speaks text using ElevenLabs API
+ */
+async function speakWithElevenLabs(options: SpeakOptions): Promise<void> {
+  const cleanedText = cleanTextForSpeech(options.text);
+  
+  if (!cleanedText) {
+    options.onEnd?.();
+    return;
+  }
+
+  try {
+    options.onStart?.();
+    
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          text: cleanedText,
+          voiceId: options.voice || 'sarah',
+          speed: options.rate || 1,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'TTS request failed');
+    }
+
+    const data = await response.json();
+    
+    if (!data.audioContent) {
+      throw new Error('No audio content received');
+    }
+
+    // Use data URI for reliable audio playback
+    const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+    
+    // Stop any current audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+
+    const audio = new Audio(audioUrl);
+    currentAudio = audio;
+    
+    audio.onended = () => {
+      currentAudio = null;
+      options.onEnd?.();
+    };
+    
+    audio.onerror = () => {
+      currentAudio = null;
+      options.onError?.(new Error('Audio playback failed'));
+    };
+
+    await audio.play();
+  } catch (error) {
+    options.onError?.(error instanceof Error ? error : new Error('TTS failed'));
+  }
 }
 
 /**
  * Detects if text contains Swahili words
  */
 function containsSwahili(text: string): boolean {
-  // Common Swahili words and patterns
   const swahiliPatterns = [
     /\b(habari|jambo|karibu|asante|sana|ndio|hapana|ndiyo|kwa|na|ya|wa|ni|la|za)\b/i,
     /\b(mimi|wewe|yeye|sisi|ninyi|wao)\b/i,
@@ -82,29 +176,23 @@ function containsSwahili(text: string): boolean {
 }
 
 /**
- * Speaks the given text using the Web Speech API with Swahili support
+ * Speaks text using Web Speech API as fallback
  */
-export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
+function speakWithWebSpeech(options: SpeakOptions): SpeechSynthesisUtterance | null {
   if (!('speechSynthesis' in window)) {
     options.onError?.(new Error('Speech synthesis not supported'));
     return null;
   }
 
-  // Cancel any ongoing speech
   speechSynthesis.cancel();
 
   const cleanedText = cleanTextForSpeech(options.text);
   const utterance = new SpeechSynthesisUtterance(cleanedText);
 
-  // Get available voices
   const voices = speechSynthesis.getVoices();
-  
-  // Detect language - check if text contains Swahili
   const isSwahili = options.lang === 'sw' || containsSwahili(cleanedText);
   
-  // Try to find a matching voice
   if (isSwahili) {
-    // Look for Swahili voice first
     const swahiliVoice = voices.find(v => 
       v.lang.toLowerCase().includes('sw') || 
       v.lang.toLowerCase().includes('swahili')
@@ -114,46 +202,32 @@ export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
       utterance.voice = swahiliVoice;
       utterance.lang = swahiliVoice.lang;
     } else {
-      // Fallback: Use a clear English voice with slower rate for Swahili
-      // African English voices or general English voices work better
       const africanVoice = voices.find(v => 
-        v.lang.includes('en-KE') || // Kenyan English
-        v.lang.includes('en-TZ') || // Tanzanian English  
-        v.lang.includes('en-ZA') || // South African English
-        v.lang.includes('en-NG')    // Nigerian English
+        v.lang.includes('en-KE') || v.lang.includes('en-TZ') || 
+        v.lang.includes('en-ZA') || v.lang.includes('en-NG')
       );
       
       if (africanVoice) {
         utterance.voice = africanVoice;
       } else {
-        // Use any English voice but slow down for clarity
         const englishVoice = voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) {
-          utterance.voice = englishVoice;
-        }
+        if (englishVoice) utterance.voice = englishVoice;
       }
-      utterance.lang = 'sw-TZ'; // Set Swahili language hint
+      utterance.lang = 'sw-TZ';
     }
-    
-    // Slower rate for clearer Swahili pronunciation
     utterance.rate = options.rate ?? 0.85;
   } else if (options.voice) {
     const matchingVoice = voices.find(v => 
       v.name.toLowerCase().includes(options.voice!.toLowerCase()) ||
       v.lang.toLowerCase().includes(options.voice!.toLowerCase())
     );
-    if (matchingVoice) {
-      utterance.voice = matchingVoice;
-    }
+    if (matchingVoice) utterance.voice = matchingVoice;
     utterance.rate = options.rate ?? 1;
   } else {
     utterance.rate = options.rate ?? 1;
   }
 
-  // Apply other settings
   utterance.pitch = options.pitch ?? 1;
-
-  // Event handlers
   utterance.onstart = () => options.onStart?.();
   utterance.onend = () => options.onEnd?.();
   utterance.onerror = (event) => options.onError?.(new Error(event.error));
@@ -163,18 +237,58 @@ export function speak(options: SpeakOptions): SpeechSynthesisUtterance | null {
 }
 
 /**
+ * Speaks the given text using ElevenLabs or Web Speech API
+ */
+export function speak(options: SpeakOptions): void {
+  const useElevenLabs = options.useElevenLabs !== false; // Default to true
+  
+  if (useElevenLabs) {
+    speakWithElevenLabs(options);
+  } else {
+    speakWithWebSpeech(options);
+  }
+}
+
+/**
  * Stops any ongoing speech
  */
 export function stopSpeaking(): void {
+  // Stop ElevenLabs audio
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  
+  // Stop Web Speech API
   if ('speechSynthesis' in window) {
     speechSynthesis.cancel();
   }
 }
 
 /**
- * Gets available voices
+ * Gets available Web Speech voices
  */
 export function getVoices(): SpeechSynthesisVoice[] {
   if (!('speechSynthesis' in window)) return [];
   return speechSynthesis.getVoices();
+}
+
+/**
+ * Gets voice settings from localStorage
+ */
+export function getVoiceSettings(): { enabled: boolean; voiceId: string; speed: number; useElevenLabs: boolean } {
+  const stored = localStorage.getItem('wiser_voice');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {}
+  }
+  return { enabled: true, voiceId: 'sarah', speed: 1, useElevenLabs: true };
+}
+
+/**
+ * Saves voice settings to localStorage
+ */
+export function saveVoiceSettings(settings: { enabled: boolean; voiceId: string; speed: number; useElevenLabs: boolean }): void {
+  localStorage.setItem('wiser_voice', JSON.stringify(settings));
 }
