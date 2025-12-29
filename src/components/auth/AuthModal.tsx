@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import bongoLogo from '@/assets/bongo-ai-logo.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 
 export function AuthModal() {
   const { showAuthModal, setShowAuthModal, login, signup } = useAuth();
@@ -32,8 +32,8 @@ export function AuthModal() {
         toast({
           title: mode === 'login' ? 'Welcome back!' : 'Account created!',
           description: mode === 'login' 
-            ? 'You are now logged in to Bongo AI.' 
-            : 'Welcome to Bongo AI! Enjoy all features.',
+            ? 'You are now logged in to Wiser AI.' 
+            : 'Welcome to Wiser AI! Enjoy all features.',
         });
         // Reset form
         setEmail('');
@@ -82,12 +82,12 @@ export function AuthModal() {
           {/* Header */}
           <div className="text-center mb-8">
             <img 
-              src={bongoLogo} 
-              alt="Bongo AI" 
+              src={wiserLogo} 
+              alt="Wiser AI" 
               className="h-16 w-16 mx-auto mb-4 animate-float"
             />
             <h2 className="font-display text-2xl font-bold gradient-text">
-              {mode === 'login' ? 'Welcome Back' : 'Join Bongo AI'}
+              {mode === 'login' ? 'Welcome Back' : 'Join Wiser AI'}
             </h2>
             <p className="text-sm text-muted-foreground mt-2">
               {mode === 'login' 

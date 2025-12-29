@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, Phone, PhoneOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { speak, stopSpeaking, getVoiceSettings, cleanTextForSpeech } from '@/lib/textToSpeech';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '@/lib/speechToText';
 import { toast } from '@/hooks/use-toast';
@@ -101,26 +100,67 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
     setAiResponse('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
-          messages: [{ role: 'user', content: text }],
-          mode: currentMode,
-          model: currentModel
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: text }],
+            mode: currentMode,
+            model: currentModel
+          })
         }
-      });
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
 
-      const response = data.response || data.message || '';
-      setAiResponse(response);
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                fullResponse += content;
+              } catch {
+                // Not JSON, might be plain text
+                fullResponse += data;
+              }
+            }
+          }
+        }
+      }
+
+      setAiResponse(fullResponse || 'I received your message.');
 
       // Speak the response
-      if (!isMuted && response) {
+      if (!isMuted && fullResponse) {
         const voiceSettings = getVoiceSettings();
         setIsSpeaking(true);
         
         speak({
-          text: response,
+          text: fullResponse,
           voice: voiceSettings.voiceId,
           rate: voiceSettings.speed,
           useElevenLabs: voiceSettings.useElevenLabs,
@@ -143,9 +183,10 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
         setTimeout(startListening, 500);
       }
     } catch (error) {
+      console.error('Voice processing error:', error);
       toast({
         title: "Error",
-        description: "Failed to get AI response",
+        description: "Failed to get AI response. Please try again.",
         variant: "destructive"
       });
     } finally {
