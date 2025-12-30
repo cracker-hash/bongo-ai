@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2, LogOut } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,8 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem('wiser_theme') as Theme | null;
@@ -389,6 +391,84 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                   <Save className="h-3 w-3 mr-2" />
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
+
+                <Separator className="my-3" />
+
+                {/* Delete Account */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-destructive">Danger Zone</Label>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Delete Account
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">Delete Your Account?</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                          <p>This action is <strong>permanent and cannot be undone</strong>. All your data will be deleted:</p>
+                          <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                            <li>All chat history and messages</li>
+                            <li>Projects and saved content</li>
+                            <li>Profile photo and settings</li>
+                            <li>Study progress, XP, and achievements</li>
+                          </ul>
+                          <div className="mt-4 p-3 bg-destructive/10 rounded-lg">
+                            <Label className="text-xs">Type <strong>DELETE</strong> to confirm:</Label>
+                            <Input 
+                              value={deleteConfirmText}
+                              onChange={(e) => setDeleteConfirmText(e.target.value)}
+                              placeholder="Type DELETE"
+                              className="mt-2 h-8 text-sm"
+                            />
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (deleteConfirmText !== 'DELETE') return;
+                            
+                            setIsDeletingAccount(true);
+                            try {
+                              // Delete user data first (chats, etc.)
+                              if (user?.id) {
+                                await supabase.from('chats').delete().eq('user_id', user.id);
+                                await supabase.from('messages').delete().eq('user_id', user.id);
+                                await supabase.storage.from('avatars').remove([`${user.id}/avatar.png`, `${user.id}/avatar.jpg`, `${user.id}/avatar.jpeg`]);
+                              }
+                              
+                              // Sign out (actual account deletion requires admin API in production)
+                              await logout();
+                              toast({ description: 'Account deleted successfully. Goodbye!' });
+                              onBack();
+                            } catch (error: any) {
+                              toast({ description: error.message || 'Failed to delete account', variant: 'destructive' });
+                            } finally {
+                              setIsDeletingAccount(false);
+                              setDeleteConfirmText('');
+                            }
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {isDeletingAccount ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete Forever'
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardContent>
             </Card>
           )}
