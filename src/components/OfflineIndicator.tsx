@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isOnline, onOnlineStatusChange, getPendingMessages } from '@/lib/offlineStorage';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 
 export function OfflineIndicator() {
   const [online, setOnline] = useState(isOnline());
   const [pendingCount, setPendingCount] = useState(0);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // Check if installed as PWA
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
+    
     const unsubscribe = onOnlineStatusChange(setOnline);
     
     // Check for pending messages
@@ -31,25 +36,34 @@ export function OfflineIndicator() {
 
   return (
     <div className={cn(
-      "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
-      online ? "bg-primary/90 text-primary-foreground" : "bg-amber-500/90 text-amber-950",
-      "px-4 py-2 rounded-full",
-      "flex items-center gap-2 text-sm font-medium shadow-lg",
-      "animate-in fade-in slide-in-from-bottom-4"
+      "fixed top-0 left-0 right-0 z-50",
+      "animate-in fade-in slide-in-from-top-2 duration-300"
     )}>
-      {online ? (
-        <>
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          <span>Syncing {pendingCount} message{pendingCount > 1 ? 's' : ''}...</span>
-        </>
-      ) : (
-        <>
-          <WifiOff className="h-4 w-4" />
-          <span>
-            Offline{pendingCount > 0 ? ` - ${pendingCount} pending` : ' - viewing cached content'}
-          </span>
-        </>
-      )}
+      <div className={cn(
+        online ? "bg-primary/95" : "bg-gradient-to-r from-amber-600 to-orange-600",
+        "text-white px-4 py-2.5",
+        "flex items-center justify-center gap-3 text-sm font-medium shadow-lg"
+      )}>
+        {online ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>Syncing {pendingCount} message{pendingCount > 1 ? 's' : ''}...</span>
+          </>
+        ) : (
+          <>
+            <Plane className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <img src={wiserLogo} alt="" className="h-5 w-5 rounded" />
+              <span>
+                {isInstalled 
+                  ? "You're offline — all your chats are here. Welcome back!"
+                  : `Offline Mode${pendingCount > 0 ? ` — ${pendingCount} pending` : ' — viewing cached content'}`
+                }
+              </span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -77,13 +91,16 @@ export function OnlineIndicator() {
 
   return (
     <div className={cn(
-      "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
-      "bg-green-500/90 text-green-950 px-4 py-2 rounded-full",
-      "flex items-center gap-2 text-sm font-medium shadow-lg",
-      "animate-in fade-in slide-in-from-bottom-4"
+      "fixed top-0 left-0 right-0 z-50",
+      "animate-in fade-in slide-in-from-top-2 duration-300"
     )}>
-      <Wifi className="h-4 w-4" />
-      <span>Back online - syncing...</span>
+      <div className={cn(
+        "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
+        "px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-medium shadow-lg"
+      )}>
+        <Wifi className="h-4 w-4" />
+        <span>Back online — syncing your data...</span>
+      </div>
     </div>
   );
 }

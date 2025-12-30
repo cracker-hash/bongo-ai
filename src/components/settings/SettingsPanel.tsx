@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2, Trash2, Wifi, WifiOff, Smartphone, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -40,6 +41,25 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    // Check PWA installation status
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
+    setIsOnline(navigator.onLine);
+    
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('wiser_theme') as Theme | null;
@@ -344,6 +364,77 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                 <Play className="h-3 w-3 mr-2" />
                 {isTestingVoice ? 'Stop' : 'Test Voice'}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Offline Access */}
+          <Card className="bg-sidebar-accent/30 border-sidebar-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-sidebar-foreground">
+                <Smartphone className="h-4 w-4" />
+                Offline Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {isInstalled ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label className="text-xs">App Installed</Label>
+                </div>
+                <span className={cn(
+                  "text-xs font-medium px-2 py-0.5 rounded-full",
+                  isInstalled 
+                    ? "bg-green-500/20 text-green-500" 
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {isInstalled ? 'Enabled' : 'Not Installed'}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {isOnline ? (
+                    <Wifi className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-amber-500" />
+                  )}
+                  <Label className="text-xs">Connection Status</Label>
+                </div>
+                <span className={cn(
+                  "text-xs font-medium px-2 py-0.5 rounded-full",
+                  isOnline 
+                    ? "bg-green-500/20 text-green-500" 
+                    : "bg-amber-500/20 text-amber-500"
+                )}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+
+              {!isInstalled && (
+                <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-xs text-foreground/80">
+                    <strong>Tip:</strong> Add WISER AI to your home screen to access all your chats offline — no internet needed!
+                  </p>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="p-0 h-auto mt-1 text-primary"
+                    onClick={() => window.location.href = '/install'}
+                  >
+                    Learn how to install →
+                  </Button>
+                </div>
+              )}
+
+              {isInstalled && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  ✨ All your chats, projects, and settings are available offline. The WISER advantage!
+                </p>
+              )}
             </CardContent>
           </Card>
 

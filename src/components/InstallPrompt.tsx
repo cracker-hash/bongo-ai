@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Smartphone, Monitor, Apple } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
@@ -9,12 +9,62 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+type Platform = 'android' | 'ios' | 'desktop' | 'unknown';
+
+function detectPlatform(): Platform {
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+  if (/android/.test(ua)) return 'android';
+  if (/windows|mac|linux/.test(ua)) return 'desktop';
+  return 'unknown';
+}
+
+const INSTALL_INSTRUCTIONS: Record<Platform, { icon: React.ReactNode; steps: string[] }> = {
+  android: {
+    icon: <Smartphone className="h-5 w-5" />,
+    steps: [
+      "Tap the three dots (⋮) menu",
+      "Select 'Add to Home screen'",
+      "Tap 'Add' to install WISER AI"
+    ]
+  },
+  ios: {
+    icon: <Apple className="h-5 w-5" />,
+    steps: [
+      "Tap the Share button (↑)",
+      "Scroll and tap 'Add to Home Screen'",
+      "Tap 'Add' to install WISER AI"
+    ]
+  },
+  desktop: {
+    icon: <Monitor className="h-5 w-5" />,
+    steps: [
+      "Click the install icon in the address bar",
+      "Or use menu → 'Install WISER AI'",
+      "Click 'Install' to add to desktop"
+    ]
+  },
+  unknown: {
+    icon: <Download className="h-5 w-5" />,
+    steps: ["Use your browser menu to add to home screen"]
+  }
+};
+
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [platform, setPlatform] = useState<Platform>('unknown');
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    setPlatform(detectPlatform());
+    
+    // Check if already installed
+    const installed = window.matchMedia('(display-mode: standalone)').matches;
+    setIsInstalled(installed);
+    if (installed) return;
+
     // Check if already dismissed
     const wasDismissed = localStorage.getItem('wiser_install_dismissed');
     if (wasDismissed) {
@@ -26,11 +76,6 @@ export function InstallPrompt() {
       }
     }
 
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      return;
-    }
-
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -40,20 +85,26 @@ export function InstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
+    // For iOS/Safari - show manual instructions after delay
+    if (detectPlatform() === 'ios') {
+      setTimeout(() => setShowPrompt(true), 5000);
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setShowPrompt(false);
-      setDeferredPrompt(null);
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        setShowPrompt(false);
+        setDeferredPrompt(null);
+        setIsInstalled(true);
+      }
     }
   };
 
@@ -63,75 +114,131 @@ export function InstallPrompt() {
     localStorage.setItem('wiser_install_dismissed', Date.now().toString());
   };
 
-  if (!showPrompt || dismissed || !deferredPrompt) return null;
+  if (!showPrompt || dismissed || isInstalled) return null;
+
+  const instructions = INSTALL_INSTRUCTIONS[platform];
+  const canAutoInstall = !!deferredPrompt;
 
   return (
     <div className={cn(
-      "fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50",
-      "bg-card border border-border rounded-2xl shadow-2xl p-4",
-      "animate-in slide-in-from-bottom-4 fade-in duration-300"
+      "fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[420px] z-50",
+      "bg-gradient-to-br from-card to-card/95 border border-primary/20 rounded-2xl shadow-2xl p-5",
+      "animate-in slide-in-from-bottom-4 fade-in duration-300",
+      "backdrop-blur-xl"
     )}>
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-2 right-2 h-8 w-8 text-muted-foreground"
+        className="absolute top-3 right-3 h-8 w-8 text-muted-foreground hover:text-foreground"
         onClick={handleDismiss}
       >
         <X className="h-4 w-4" />
       </Button>
 
       <div className="flex items-start gap-4">
-        <div className="shrink-0">
+        <div className="shrink-0 relative">
           <img 
             src={wiserLogo} 
             alt="Wiser AI" 
-            className="w-14 h-14 rounded-xl"
+            className="w-16 h-16 rounded-2xl shadow-lg"
           />
+          <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1">
+            {instructions.icon}
+          </div>
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground">Install Wiser AI</h3>
+          <h3 className="font-bold text-lg text-foreground">Install WISER AI</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Add to your home screen for quick access and offline support
+            Unlock <span className="text-primary font-medium">full offline access</span> to all your chats!
           </p>
-          
-          <div className="flex items-center gap-2 mt-3">
-            <Button
-              size="sm"
-              className="gradient-bg hover:opacity-90 gap-2"
-              onClick={handleInstall}
-            >
-              <Download className="h-4 w-4" />
-              Install Now
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDismiss}
-            >
-              Maybe Later
-            </Button>
-          </div>
         </div>
       </div>
 
+      {/* Platform-specific instructions */}
+      {!canAutoInstall && (
+        <div className="mt-4 p-3 bg-sidebar-accent/50 rounded-xl">
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+            {instructions.icon}
+            <span>How to install:</span>
+          </p>
+          <ol className="text-sm space-y-1.5">
+            {instructions.steps.map((step, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">
+                  {i + 1}
+                </span>
+                <span className="text-foreground/80">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      
+      <div className="flex items-center gap-2 mt-4">
+        {canAutoInstall ? (
+          <Button
+            className="flex-1 gradient-bg hover:opacity-90 gap-2 h-11 font-semibold"
+            onClick={handleInstall}
+          >
+            <Download className="h-4 w-4" />
+            Install Now
+          </Button>
+        ) : (
+          <Button
+            className="flex-1 gradient-bg hover:opacity-90 gap-2 h-11 font-semibold"
+            onClick={handleDismiss}
+          >
+            Got It!
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDismiss}
+          className="h-11"
+        >
+          Later
+        </Button>
+      </div>
+
       {/* Benefits */}
-      <div className="mt-4 pt-3 border-t border-border/50">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="text-xs">
-            <div className="text-lg">⚡</div>
-            <span className="text-muted-foreground">Faster</span>
+      <div className="mt-4 pt-4 border-t border-border/30">
+        <p className="text-xs text-center text-muted-foreground mb-3">
+          The WISER advantage — your data, always with you
+        </p>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="p-2 rounded-lg bg-sidebar-accent/30">
+            <div className="text-xl mb-1">📴</div>
+            <span className="text-xs text-muted-foreground">Full Offline</span>
           </div>
-          <div className="text-xs">
-            <div className="text-lg">📴</div>
-            <span className="text-muted-foreground">Offline</span>
+          <div className="p-2 rounded-lg bg-sidebar-accent/30">
+            <div className="text-xl mb-1">⚡</div>
+            <span className="text-xs text-muted-foreground">Instant Load</span>
           </div>
-          <div className="text-xs">
-            <div className="text-lg">🔔</div>
-            <span className="text-muted-foreground">Notifications</span>
+          <div className="p-2 rounded-lg bg-sidebar-accent/30">
+            <div className="text-xl mb-1">🔒</div>
+            <span className="text-xs text-muted-foreground">Your Device</span>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+// Hook to check if app is installed
+export function useIsInstalled() {
+  const [isInstalled, setIsInstalled] = useState(false);
+  
+  useEffect(() => {
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
+    
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handler = (e: MediaQueryListEvent) => setIsInstalled(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+  
+  return isInstalled;
 }
