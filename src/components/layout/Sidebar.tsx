@@ -39,6 +39,18 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from '@/hooks/use-toast';
 
 const modeIcons: Record<ChatMode, React.ReactNode> = {
   conversation: <MessageCircle className="h-4 w-4" />,
@@ -515,15 +527,38 @@ export function Sidebar() {
                 <Settings className="h-4 w-4" />
                 Settings
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 gap-2 h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                onClick={logout}
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 gap-2 h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will need to sign in again to access your account and chat history.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => {
+                        logout();
+                        toast({ description: 'Logged out successfully' });
+                      }} 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Log Out
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </div>

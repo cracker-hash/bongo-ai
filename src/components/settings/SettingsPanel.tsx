@@ -389,32 +389,6 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                   <Save className="h-3 w-3 mr-2" />
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
-
-                <Separator className="my-2" />
-
-                {/* Logout with confirmation dialog */}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="w-full">
-                      <LogOut className="h-3 w-3 mr-2" />
-                      Log Out
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        You will need to sign in again to access your account and chat history.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Log Out
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </CardContent>
             </Card>
           )}
