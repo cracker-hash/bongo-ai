@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { format } from 'date-fns';
 import { ChatMenu } from '@/components/chat/ChatMenu';
+import { ProjectMenu } from '@/components/layout/ProjectMenu';
 import { CreateProjectDialog } from '@/components/layout/CreateProjectDialog';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useState, useMemo } from 'react';
@@ -91,7 +92,17 @@ export function Sidebar() {
     messages
   } = useChat();
   const { isAuthenticated, setShowAuthModal, user, logout } = useAuth();
-  const { projects, createProject } = useProjects();
+  const { projects, createProject, updateProject, deleteProject } = useProjects();
+
+  // Rename project handler
+  const handleRenameProject = async (id: string, name: string) => {
+    await updateProject(id, { name });
+  };
+
+  // Delete project handler (with all chats)
+  const handleDeleteProject = async (id: string) => {
+    await deleteProject(id, true); // true = delete all chats in project
+  };
 
   // Handle creating project and auto-open chat
   const handleCreateProject = async (name: string, icon: string, description?: string) => {
@@ -363,21 +374,29 @@ export function Sidebar() {
                     open={expandedProjects.has(project.id)}
                     onOpenChange={() => toggleProject(project.id)}
                   >
-                    <CollapsibleTrigger asChild>
-                      <button className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-sidebar-accent/60 transition-all duration-200 hover:shadow-chat-hover group/project">
-                        <ChevronRight className={cn(
-                          "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                          expandedProjects.has(project.id) && "rotate-90"
-                        )} />
-                        <Folder className="h-4 w-4 text-primary" />
-                        <span className="text-sm text-sidebar-foreground truncate flex-1 text-left">
-                          {project.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {projectChats[project.id]?.length || 0}
-                        </span>
-                      </button>
-                    </CollapsibleTrigger>
+                    <div className="flex items-center group/project">
+                      <CollapsibleTrigger asChild>
+                        <button className="flex-1 flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-sidebar-accent/60 transition-all duration-200 hover:shadow-chat-hover">
+                          <ChevronRight className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                            expandedProjects.has(project.id) && "rotate-90"
+                          )} />
+                          <Folder className="h-4 w-4 text-primary" />
+                          <span className="text-sm text-sidebar-foreground truncate flex-1 text-left">
+                            {project.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {projectChats[project.id]?.length || 0}
+                          </span>
+                        </button>
+                      </CollapsibleTrigger>
+                      <ProjectMenu
+                        projectId={project.id}
+                        projectName={project.name}
+                        onRename={handleRenameProject}
+                        onDelete={handleDeleteProject}
+                      />
+                    </div>
                     <CollapsibleContent>
                       <div className="pl-6 space-y-0.5 mt-1">
                         {projectChats[project.id]?.map(renderChatItem)}
