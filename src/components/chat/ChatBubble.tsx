@@ -22,6 +22,9 @@ import { submitFeedback } from '@/lib/feedbackAnalytics';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
@@ -225,8 +228,10 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
                 {message.content}
               </p>
             ) : (
-              <div className="text-sm markdown-content">
+              <div className="text-sm markdown-content math-content">
                 <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
                   components={{
                     code({ node, className, children, ...props }) {
                       const match = /language-(\w+)/.exec(className || '');
