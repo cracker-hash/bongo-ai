@@ -2,18 +2,15 @@ import { useState } from 'react';
 import { 
   MoreHorizontal, 
   Share2, 
-  Users, 
   Pencil, 
-  FolderInput, 
-  Pin, 
-  Archive, 
   Trash2,
-  Copy,
   Link,
-  FileText,
-  Send,
+  Copy,
   Download,
-  FolderPlus
+  Lock,
+  Globe,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,7 +43,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 // Social share icons
 const WhatsAppIcon = () => (
@@ -73,59 +69,37 @@ const InstagramIcon = () => (
   </svg>
 );
 
-interface Project {
-  id: string;
-  name: string;
-  icon: string;
-}
-
-interface ChatMenuProps {
-  chatId: string;
-  chatName: string;
-  isPinned: boolean;
-  isArchived: boolean;
-  projectId: string | null;
-  projects: Project[];
+interface ProjectMenuProps {
+  projectId: string;
+  projectName: string;
   onRename: (id: string, name: string) => void;
-  onPin: (id: string, pinned: boolean) => void;
-  onArchive: (id: string, archived: boolean) => void;
-  onMoveToProject: (id: string, projectId: string | null) => void;
   onDelete: (id: string) => void;
-  onShare?: (id: string) => void;
-  onCreateProject?: () => void;
 }
 
-export function ChatMenu({
-  chatId,
-  chatName,
-  isPinned,
-  isArchived,
+export function ProjectMenu({
   projectId,
-  projects,
+  projectName,
   onRename,
-  onPin,
-  onArchive,
-  onMoveToProject,
   onDelete,
-  onCreateProject,
-}: ChatMenuProps) {
+}: ProjectMenuProps) {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
-  const [showArchiveUndo, setShowArchiveUndo] = useState(false);
-  const [newName, setNewName] = useState(chatName);
+  const [newName, setNewName] = useState(projectName);
   const isOnline = navigator.onLine;
 
-  const shareUrl = `${window.location.origin}/chat/${chatId}`;
+  const shareUrl = `${window.location.origin}/project/${projectId}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
-    toast.success('🔗 Link copied to clipboard!');
+    toast.success('🔗 Project link copied!', {
+      description: 'Share this link with others'
+    });
     setShowShareSheet(false);
   };
 
   const handleShareSocial = (platform: string) => {
-    const text = `Check out my chat on Wiser AI!`;
+    const text = `Check out my project "${projectName}" on Wiser AI!`;
     const encodedUrl = encodeURIComponent(shareUrl);
     const encodedText = encodeURIComponent(text);
     
@@ -141,109 +115,46 @@ export function ChatMenu({
         url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
         break;
       case 'email':
-        url = `mailto:?subject=${encodeURIComponent(`Check out: ${chatName}`)}&body=${encodedText}%20${encodedUrl}`;
+        url = `mailto:?subject=${encodeURIComponent(`Check out: ${projectName}`)}&body=${encodedText}%20${encodedUrl}`;
         break;
     }
     
     if (url) {
       window.open(url, '_blank');
-      toast.success(`Chat shared! 🎉`);
+      toast.success(`Project shared! 🎉`);
     }
     setShowShareSheet(false);
   };
 
-  const handleCopyContent = () => {
-    toast.success('📋 Chat content copied to clipboard');
-  };
-
-  const handleExport = () => {
-    toast.success('📄 Chat exported as text file');
+  const handleExportProject = () => {
+    toast.success('📦 Exporting project...', {
+      description: 'Your project will be downloaded shortly'
+    });
     setShowShareSheet(false);
   };
 
   const handleRename = () => {
     if (!newName.trim()) {
-      toast.error('Chat name cannot be empty');
+      toast.error('Project name cannot be empty');
       return;
     }
     if (newName.length > 50) {
       toast.error('Name too long (max 50 characters)');
       return;
     }
-    if (newName.trim() !== chatName) {
-      onRename(chatId, newName.trim());
-      toast.success('✎ Chat renamed!');
+    if (newName.trim() !== projectName) {
+      onRename(projectId, newName.trim());
+      toast.success('✎ Project renamed!');
     }
     setShowRenameDialog(false);
   };
 
-  const handleStartGroupChat = () => {
-    toast.info('👥 Group chat feature coming soon!', {
-      description: 'You\'ll be able to invite others to collaborate'
-    });
-  };
-
-  const handlePin = () => {
-    // Check pin limit (max 5)
-    const pinnedCount = projects.length; // This should be actual pinned count
-    if (!isPinned && pinnedCount >= 5) {
-      toast.error('📌 Maximum 5 pinned chats allowed', {
-        description: 'Unpin another chat first'
-      });
-      return;
-    }
-    onPin(chatId, !isPinned);
-    toast.success(isPinned ? 'Chat unpinned' : '📌 Chat pinned!');
-  };
-
-  const handleArchive = () => {
-    // Must unpin before archiving
-    if (isPinned && !isArchived) {
-      toast.error('Unpin chat before archiving');
-      return;
-    }
-    
-    onArchive(chatId, !isArchived);
-    
-    if (!isArchived) {
-      // Show undo toast for 10 seconds
-      toast.success('📦 Chat archived', {
-        description: 'This chat has been moved to Archives',
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            onArchive(chatId, false);
-            toast.success('Chat restored from archive');
-          }
-        },
-        duration: 10000
-      });
-    } else {
-      toast.success('Chat restored from archive');
-    }
-  };
-
   const handleDelete = () => {
-    // Can't delete pinned chats
-    if (isPinned) {
-      toast.error('Unpin chat before deleting');
-      setShowDeleteDialog(false);
-      return;
-    }
-    
-    onDelete(chatId);
-    toast.success('🗑️ Chat deleted', {
-      description: 'This chat has been permanently removed'
+    onDelete(projectId);
+    toast.success('🗑️ Project deleted', {
+      description: 'All chats in this project have been removed'
     });
     setShowDeleteDialog(false);
-  };
-
-  const handleMoveToProject = (targetProjectId: string | null) => {
-    onMoveToProject(chatId, targetProjectId);
-    const projectName = targetProjectId 
-      ? projects.find(p => p.id === targetProjectId)?.name 
-      : 'No Project';
-    toast.success(`📁 Moved to ${projectName}`);
   };
 
   return (
@@ -253,9 +164,9 @@ export function ChatMenu({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 opacity-0 group-hover/chat:opacity-100 shrink-0 hover:bg-sidebar-accent text-muted-foreground hover:text-sidebar-foreground transition-all duration-200"
+            className="h-6 w-6 opacity-0 group-hover/project:opacity-100 shrink-0 hover:bg-sidebar-accent text-muted-foreground hover:text-sidebar-foreground transition-all duration-200"
             onClick={(e) => e.stopPropagation()}
-            aria-label="Chat options"
+            aria-label="Project options"
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -265,122 +176,42 @@ export function ChatMenu({
           className="w-52 bg-[#1e1e1e] border-sidebar-border/50 shadow-xl animate-in fade-in-0 zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 1. Share */}
+          {/* Share Project */}
           <DropdownMenuItem 
             onClick={() => setShowShareSheet(true)}
             disabled={!isOnline}
             className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer"
           >
             <Share2 className="h-4 w-4" />
-            Share
+            Share Project
             {!isOnline && (
               <span className="ml-auto text-xs text-muted-foreground">Offline</span>
             )}
           </DropdownMenuItem>
 
-          {/* 2. Start Group Chat */}
-          <DropdownMenuItem 
-            onClick={handleStartGroupChat}
-            className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer"
-          >
-            <Users className="h-4 w-4" />
-            Start a group chat
-          </DropdownMenuItem>
-
           <DropdownMenuSeparator className="bg-sidebar-border/30" />
 
-          {/* 3. Rename */}
+          {/* Rename Project */}
           <DropdownMenuItem 
             onClick={() => {
-              setNewName(chatName);
+              setNewName(projectName);
               setShowRenameDialog(true);
             }}
             className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer"
           >
             <Pencil className="h-4 w-4" />
-            Rename
-          </DropdownMenuItem>
-
-          {/* 4. Move to Project */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer">
-              <FolderInput className="h-4 w-4" />
-              Move to project
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="bg-[#1e1e1e] border-sidebar-border/50">
-              <DropdownMenuItem 
-                onClick={() => handleMoveToProject(null)}
-                className={cn(
-                  "gap-2 text-sidebar-foreground hover:bg-sidebar-accent cursor-pointer",
-                  !projectId && "bg-sidebar-accent"
-                )}
-              >
-                No Project
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-sidebar-border/30" />
-              {projects.map((project) => (
-                <DropdownMenuItem
-                  key={project.id}
-                  onClick={() => handleMoveToProject(project.id)}
-                  className={cn(
-                    "gap-2 text-sidebar-foreground hover:bg-sidebar-accent cursor-pointer",
-                    projectId === project.id && "bg-sidebar-accent"
-                  )}
-                >
-                  {project.name}
-                </DropdownMenuItem>
-              ))}
-              {projects.length === 0 && (
-                <>
-                  <DropdownMenuItem disabled className="text-muted-foreground">
-                    No projects yet
-                  </DropdownMenuItem>
-                  {onCreateProject && (
-                    <>
-                      <DropdownMenuSeparator className="bg-sidebar-border/30" />
-                      <DropdownMenuItem 
-                        onClick={onCreateProject}
-                        className="gap-2 text-primary hover:bg-sidebar-accent cursor-pointer"
-                      >
-                        <FolderPlus className="h-4 w-4" />
-                        New Project
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-
-          <DropdownMenuSeparator className="bg-sidebar-border/30" />
-
-          {/* 5. Pin */}
-          <DropdownMenuItem 
-            onClick={handlePin}
-            className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer"
-          >
-            <Pin className={cn("h-4 w-4", isPinned && "fill-primary text-primary")} />
-            {isPinned ? 'Unpin chat' : 'Pin chat'}
-          </DropdownMenuItem>
-
-          {/* 6. Archive */}
-          <DropdownMenuItem 
-            onClick={handleArchive}
-            className="gap-2 text-sidebar-foreground hover:bg-sidebar-accent focus:bg-sidebar-accent cursor-pointer"
-          >
-            <Archive className="h-4 w-4" />
-            {isArchived ? 'Unarchive' : 'Archive'}
+            Rename Project
           </DropdownMenuItem>
 
           <DropdownMenuSeparator className="bg-sidebar-border/30" />
 
-          {/* 7. Delete */}
+          {/* Delete Project */}
           <DropdownMenuItem 
             onClick={() => setShowDeleteDialog(true)}
             className="gap-2 text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            Delete Project
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -391,10 +222,10 @@ export function ChatMenu({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sidebar-foreground">
               <Share2 className="h-5 w-5 text-primary" />
-              Share Chat
+              Share Project
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Share "{chatName.length > 30 ? chatName.substring(0, 30) + '…' : chatName}" with others
+              Share "{projectName}" with others
             </DialogDescription>
           </DialogHeader>
           
@@ -406,7 +237,6 @@ export function ChatMenu({
                 size="icon"
                 className="h-12 w-12 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366]"
                 onClick={() => handleShareSocial('whatsapp')}
-                aria-label="Share on WhatsApp"
               >
                 <WhatsAppIcon />
               </Button>
@@ -415,7 +245,6 @@ export function ChatMenu({
                 size="icon"
                 className="h-12 w-12 rounded-full bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc]"
                 onClick={() => handleShareSocial('telegram')}
-                aria-label="Share on Telegram"
               >
                 <TelegramIcon />
               </Button>
@@ -424,7 +253,6 @@ export function ChatMenu({
                 size="icon"
                 className="h-12 w-12 rounded-full bg-foreground/10 hover:bg-foreground/20 text-foreground"
                 onClick={() => handleShareSocial('twitter')}
-                aria-label="Share on X"
               >
                 <XIcon />
               </Button>
@@ -433,7 +261,6 @@ export function ChatMenu({
                 size="icon"
                 className="h-12 w-12 rounded-full bg-[#E4405F]/10 hover:bg-[#E4405F]/20 text-[#E4405F]"
                 onClick={() => toast.info('Copy link to share on Instagram')}
-                aria-label="Share on Instagram"
               >
                 <InstagramIcon />
               </Button>
@@ -442,7 +269,6 @@ export function ChatMenu({
                 size="icon"
                 className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20 text-primary"
                 onClick={() => handleShareSocial('email')}
-                aria-label="Share via Email"
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -461,25 +287,15 @@ export function ChatMenu({
               </Button>
             </div>
 
-            {/* Additional Options */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant="outline" 
-                className="border-sidebar-border/50"
-                onClick={handleCopyContent}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Content
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-sidebar-border/50"
-                onClick={handleExport}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
+            {/* Export Option */}
+            <Button 
+              variant="outline" 
+              className="w-full border-sidebar-border/50"
+              onClick={handleExportProject}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Project (JSON)
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -488,15 +304,15 @@ export function ChatMenu({
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent className="bg-[#1e1e1e] border-sidebar-border/50">
           <DialogHeader>
-            <DialogTitle className="text-sidebar-foreground">Rename Chat</DialogTitle>
+            <DialogTitle className="text-sidebar-foreground">Rename Project</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Enter a new name for this chat (max 50 characters)
+              Enter a new name for this project (max 50 characters)
             </DialogDescription>
           </DialogHeader>
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Chat name"
+            placeholder="Project name"
             maxLength={50}
             className="bg-sidebar-accent/50 border-sidebar-border/50"
             onKeyDown={(e) => e.key === 'Enter' && handleRename()}
@@ -520,15 +336,15 @@ export function ChatMenu({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sidebar-foreground flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
-              Delete Chat
+              Delete Project
             </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              Are you sure you want to delete "{chatName.length > 40 ? chatName.substring(0, 40) + '…' : chatName}"? 
+              Are you sure you want to delete "{projectName}" and <strong>all chats inside</strong>? 
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
-            ⚠️ This chat will be permanently deleted
+            ⚠️ All project data will be permanently deleted
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-sidebar-border/50">Cancel</AlertDialogCancel>
@@ -536,7 +352,7 @@ export function ChatMenu({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Delete Project
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
