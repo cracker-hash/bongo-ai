@@ -19,7 +19,7 @@ interface QuizState {
 }
 
 export function ChatContainer() {
-  const { messages, sendMessage, currentMode, setCurrentMode, isLoading, sidebarOpen, setSidebarOpen } = useChat();
+  const { messages, sendMessage, addAssistantMessage, currentMode, setCurrentMode, isLoading, sidebarOpen, setSidebarOpen } = useChat();
   const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [quizState, setQuizState] = useState<QuizState>({
@@ -73,25 +73,66 @@ export function ChatContainer() {
     }
   }, []);
 
+  // Process document for Study mode
+  const processDocumentForStudy = useCallback(async (document: DocumentAttachment): Promise<string> => {
+    try {
+      console.log('Processing document for study:', document.filename);
+      const { data, error } = await supabase.functions.invoke('process-document', {
+        body: {
+          content: document.content,
+          filename: document.filename,
+          mode: 'study'
+        }
+      });
+
+      console.log('Study mode response:', data);
+      if (error) {
+        console.error('Study mode error:', error);
+        throw error;
+      }
+      return data?.summary || data?.analysis || 'Document processed successfully.';
+    } catch (error) {
+      console.error('Error processing document for study:', error);
+      return 'Failed to analyze document. Please try again.';
+    }
+  }, []);
+
   const handleSendMessage = async (
     content: string, 
     images?: string[], 
     document?: { filename: string; content: string; type: string }
   ) => {
+    const docAttachment: DocumentAttachment | undefined = document ? {
+      filename: document.filename,
+      content: document.content,
+      type: document.type as 'pdf' | 'doc' | 'txt' | 'image'
+    } : undefined;
+
     // If in quiz mode with a document, start the quiz
-    if (currentMode === 'quiz' && document && isAuthenticated) {
-      const docAttachment: DocumentAttachment = {
-        filename: document.filename,
-        content: document.content,
-        type: document.type as 'pdf' | 'doc' | 'txt' | 'image'
-      };
+    if (currentMode === 'quiz' && docAttachment && isAuthenticated) {
+      // Send user message with document attached (for display)
+      await sendMessage(content || `📄 Uploaded: ${docAttachment.filename}`, images, docAttachment);
       await processDocumentForQuiz(docAttachment);
-      await sendMessage(`Starting quiz based on: ${document.filename}`);
       return;
     }
 
-    // Pass images to sendMessage if provided
-    await sendMessage(content, images);
+    // If in study mode with a document, process and respond
+    if (currentMode === 'study' && docAttachment) {
+      setIsProcessingDocument(true);
+      // Send user message with document attached
+      await sendMessage(content || `📄 Analyzing: ${docAttachment.filename}`, images, docAttachment);
+      
+      // Process document and get analysis
+      const analysis = await processDocumentForStudy(docAttachment);
+      
+      // Add the AI analysis as an assistant message directly
+      addAssistantMessage(analysis);
+      setIsProcessingDocument(false);
+      return;
+    }
+
+    // Regular message - pass document for display if attached
+    await sendMessage(content, images, docAttachment);
   };
 
   const handleQuickPrompt = (prompt: string, mode: ChatMode) => {
