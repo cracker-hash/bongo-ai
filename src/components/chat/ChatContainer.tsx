@@ -1,22 +1,33 @@
-import { useRef, useEffect, useState } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
 import { WelcomeScreen } from './WelcomeScreen';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChatMode } from '@/types/chat';
+import { ChatMode, QuizQuestion, DocumentAttachment } from '@/types/chat';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface QuizState {
+  isActive: boolean;
+  questions: QuizQuestion[];
+  documentContext: string;
+}
 
 export function ChatContainer() {
   const { messages, sendMessage, currentMode, setCurrentMode, isLoading, sidebarOpen, setSidebarOpen } = useChat();
   const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizTopic, setQuizTopic] = useState('');
+  const [quizState, setQuizState] = useState<QuizState>({
+    isActive: false,
+    questions: [],
+    documentContext: ''
+  });
+  const [isProcessingDocument, setIsProcessingDocument] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -24,15 +35,63 @@ export function ChatContainer() {
     }
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (content: string) => {
-    // Check if this is a quiz request
-    if (currentMode === 'quiz' && isAuthenticated) {
-      setQuizTopic(content);
-      setShowQuiz(true);
+  // Process document and generate quiz questions
+  const processDocumentForQuiz = useCallback(async (document: DocumentAttachment) => {
+    setIsProcessingDocument(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-document', {
+        body: {
+          content: document.content,
+          filename: document.filename,
+          mode: 'quiz'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.questions && Array.isArray(data.questions)) {
+        const formattedQuestions: QuizQuestion[] = data.questions.map((q: any, index: number) => ({
+          id: `q-${index}-${Date.now()}`,
+          question: q.question,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+          hint: q.hint,
+          attempts: 0
+        }));
+
+        setQuizState({
+          isActive: true,
+          questions: formattedQuestions,
+          documentContext: document.content
+        });
+      }
+    } catch (error) {
+      console.error('Error processing document for quiz:', error);
+      toast.error('Failed to generate quiz questions. Please try again.');
+    } finally {
+      setIsProcessingDocument(false);
+    }
+  }, []);
+
+  const handleSendMessage = async (
+    content: string, 
+    images?: string[], 
+    document?: { filename: string; content: string; type: string }
+  ) => {
+    // If in quiz mode with a document, start the quiz
+    if (currentMode === 'quiz' && document && isAuthenticated) {
+      const docAttachment: DocumentAttachment = {
+        filename: document.filename,
+        content: document.content,
+        type: document.type as 'pdf' | 'doc' | 'txt' | 'image'
+      };
+      await processDocumentForQuiz(docAttachment);
+      await sendMessage(`Starting quiz based on: ${document.filename}`);
       return;
     }
 
-    await sendMessage(content);
+    // Pass images to sendMessage if provided
+    await sendMessage(content, images);
   };
 
   const handleQuickPrompt = (prompt: string, mode: ChatMode) => {
@@ -42,10 +101,47 @@ export function ChatContainer() {
     handleSendMessage(prompt);
   };
 
-  const handleQuizComplete = (score: number, total: number) => {
-    setShowQuiz(false);
-    sendMessage(`Quiz completed! I scored ${score}/${total} (${Math.round((score/total)*100)}%).`);
-  };
+  // AI-powered answer validation
+  const handleAnswerSubmit = useCallback(async (
+    questionId: string, 
+    answer: string, 
+    question: string
+  ): Promise<{ isCorrect: boolean; explanation: string; additionalInfo?: string }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('process-document', {
+        body: {
+          mode: 'validate-answer',
+          question,
+          userAnswer: answer,
+          documentContext: quizState.documentContext
+        }
+      });
+
+      if (error) throw error;
+
+      return {
+        isCorrect: data?.isCorrect ?? false,
+        explanation: data?.explanation ?? 'Unable to validate answer.',
+        additionalInfo: data?.additionalInfo
+      };
+    } catch (error) {
+      console.error('Error validating answer:', error);
+      return {
+        isCorrect: false,
+        explanation: 'An error occurred while checking your answer. Please try again.'
+      };
+    }
+  }, [quizState.documentContext]);
+
+  const handleQuizComplete = useCallback((score: number, total: number) => {
+    setQuizState({ isActive: false, questions: [], documentContext: '' });
+    const percentage = Math.round((score / total) * 100);
+    sendMessage(`🎉 Quiz completed! I scored ${score}/${total} (${percentage}%). ${
+      percentage >= 80 ? "Excellent work!" : 
+      percentage >= 60 ? "Good effort! Keep studying." : 
+      "Time to review the material."
+    }`);
+  }, [sendMessage]);
 
   return (
     <div 
@@ -75,7 +171,7 @@ export function ChatContainer() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto scrollbar-thin"
       >
-        {messages.length === 0 && !showQuiz ? (
+        {messages.length === 0 && !quizState.isActive ? (
           <WelcomeScreen onPromptClick={handleQuickPrompt} />
         ) : (
           <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
@@ -86,7 +182,6 @@ export function ChatContainer() {
                 onRegenerate={
                   message.role === 'assistant' && index === messages.length - 1
                     ? () => {
-                        // Find the last user message and resend
                         const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
                         if (lastUserMsg) {
                           sendMessage(lastUserMsg.content);
@@ -96,11 +191,21 @@ export function ChatContainer() {
                 }
               />
             ))}
-            {showQuiz && (
+            {quizState.isActive && quizState.questions.length > 0 && (
               <QuizInterface 
-                topic={quizTopic} 
-                onComplete={handleQuizComplete} 
+                questions={quizState.questions}
+                documentContext={quizState.documentContext}
+                onComplete={handleQuizComplete}
+                onAnswerSubmit={handleAnswerSubmit}
               />
+            )}
+            {isProcessingDocument && (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span>Generating quiz questions from your document...</span>
+                </div>
+              </div>
             )}
             {isLoading && <TypingIndicator />}
           </div>
