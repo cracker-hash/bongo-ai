@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Bell, User, Save, Volume2, Play, Camera, Upload, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -165,12 +165,18 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
     finally { setIsSaving(false); }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    onBack();
+    toast({ description: 'Logged out successfully' });
+  };
+
   const selectedVoice = ELEVENLABS_VOICES.find(v => v.id === voiceSettings.voiceId);
 
   return (
-    <div className="flex flex-col h-full bg-sidebar">
-      {/* Header with back button - sticky at top */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 p-4 border-b border-sidebar-border/50 bg-sidebar">
+    <div className="flex flex-col h-full bg-sidebar overflow-hidden">
+      {/* Header with back button - FIXED at top */}
+      <div className="shrink-0 flex items-center gap-3 p-4 border-b border-sidebar-border/50 bg-sidebar">
         <Button 
           variant="outline" 
           size="icon" 
@@ -371,6 +377,32 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                   <Save className="h-3 w-3 mr-2" />
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
+
+                <Separator className="my-2" />
+
+                {/* Logout with confirmation dialog */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="w-full">
+                      <LogOut className="h-3 w-3 mr-2" />
+                      Log Out
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You will need to sign in again to access your account and chat history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Log Out
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           )}
