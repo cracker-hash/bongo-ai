@@ -11,20 +11,109 @@ serve(async (req) => {
   }
 
   try {
-    const { document, filename, mode } = await req.json();
+    const body = await req.json();
+    const { content, filename, mode, question, userAnswer, documentContext } = body;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    if (!document) {
-      throw new Error("No document provided");
+    console.log(`Processing request - mode: ${mode}`);
+
+    // Handle answer validation mode
+    if (mode === "validate-answer") {
+      if (!question || !userAnswer) {
+        throw new Error("Question and user answer are required for validation");
+      }
+
+      console.log(`Validating answer for question: ${question.substring(0, 50)}...`);
+
+      const validationPrompt = `You are WISER AI, an expert educational mentor. Evaluate the student's answer to the quiz question.
+
+Context from the document:
+${documentContext ? documentContext.substring(0, 3000) : "No document context provided"}
+
+Question: ${question}
+
+Student's Answer: ${userAnswer}
+
+Evaluate the answer based on these criteria:
+1. Is the answer factually correct based on the document content?
+2. Does it demonstrate understanding of the concept?
+3. Is it complete enough to show comprehension?
+
+IMPORTANT: Be encouraging but accurate. Accept answers that demonstrate understanding even if not word-perfect.
+
+You MUST respond with a valid JSON object in this exact format (no markdown, no code blocks):
+{
+  "isCorrect": true or false,
+  "explanation": "If incorrect: detailed explanation of the correct answer from the document. If correct: brief confirmation.",
+  "additionalInfo": "If correct: interesting related fact or deeper insight from the document content."
+}`;
+
+      const validationResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "user", content: validationPrompt },
+          ],
+        }),
+      });
+
+      if (!validationResponse.ok) {
+        const errorText = await validationResponse.text();
+        console.error("AI validation error:", validationResponse.status, errorText);
+        throw new Error("Failed to validate answer");
+      }
+
+      const validationData = await validationResponse.json();
+      const validationContent = validationData.choices?.[0]?.message?.content || "";
+      
+      console.log("Validation response:", validationContent.substring(0, 200));
+
+      // Parse the JSON response
+      try {
+        // Clean the response - remove any markdown code blocks
+        let cleanedContent = validationContent
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .trim();
+        
+        const result = JSON.parse(cleanedContent);
+        
+        return new Response(JSON.stringify({
+          isCorrect: result.isCorrect === true,
+          explanation: result.explanation || "Unable to provide explanation.",
+          additionalInfo: result.additionalInfo || ""
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (parseError) {
+        console.error("Failed to parse validation response:", parseError);
+        // Fallback: try to determine correctness from the text
+        const isCorrect = validationContent.toLowerCase().includes('"iscorrect": true') || 
+                         validationContent.toLowerCase().includes('"iscorrect":true');
+        return new Response(JSON.stringify({
+          isCorrect,
+          explanation: validationContent,
+          additionalInfo: ""
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
-    console.log(`Processing document: ${filename}, mode: ${mode}`);
+    // Handle document processing modes
+    if (!content) {
+      throw new Error("No document content provided");
+    }
 
-    // Build prompt based on mode
     let systemPrompt = "";
     let userPrompt = "";
 
@@ -42,28 +131,32 @@ serve(async (req) => {
 Be thorough but concise. Extract the most important information for learning.
 
 Document content:
-${document}`;
+${content}`;
     } else if (mode === "quiz") {
-      systemPrompt = `You are WISER AI, an expert quiz generator. Your task is to analyze documents and generate quiz questions.`;
-      userPrompt = `Analyze this document and generate a quiz:
+      systemPrompt = `You are WISER AI, an expert quiz generator. Generate quiz questions from the document content.`;
+      userPrompt = `Analyze this document and generate exactly 5 quiz questions.
 
-1. **Document Summary** (brief overview for context)
-2. **Key Topics for Quiz** (main areas to test)
-3. **Generate 5-10 Short-Answer Questions** based on the content:
-   - Mix difficulty levels (easy to challenging)
-   - Include recall, application, and analysis questions
-   - Each question should test genuine understanding, not memorization
-   - Format each question clearly
+CRITICAL: You MUST respond with a valid JSON object in this exact format (no markdown, no code blocks, no extra text):
+{
+  "questions": [
+    {
+      "question": "Your question text here?",
+      "correctAnswer": "The expected correct answer",
+      "explanation": "Explanation of why this is correct, referencing the document",
+      "hint": "A helpful hint if the student is stuck"
+    }
+  ]
+}
 
-For each question, also prepare (but don't reveal):
-- The correct answer
-- A brief explanation referencing the document content
-- Hints if the student struggles
-
-Output the questions only (not the answers yet - those will be used for grading).
+Requirements for questions:
+- Create exactly 5 short-answer questions
+- Mix difficulty: 2 easy, 2 medium, 1 challenging
+- Questions should test understanding, not just memorization
+- Each question should be answerable from the document content
+- Include recall, application, and analysis questions
 
 Document content:
-${document}`;
+${content}`;
     } else {
       systemPrompt = `You are WISER AI, an intelligent document analyzer.`;
       userPrompt = `Analyze this document and provide a comprehensive summary including:
@@ -73,7 +166,7 @@ ${document}`;
 - Important details
 
 Document content:
-${document}`;
+${content}`;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -110,13 +203,49 @@ ${document}`;
     }
 
     const data = await response.json();
-    const analysis = data.choices?.[0]?.message?.content || "Unable to analyze document";
+    const analysisContent = data.choices?.[0]?.message?.content || "";
 
-    console.log("Document processed successfully");
+    console.log("Document processed successfully, mode:", mode);
 
+    // For quiz mode, parse the JSON response
+    if (mode === "quiz") {
+      try {
+        // Clean the response
+        let cleanedContent = analysisContent
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .trim();
+        
+        const quizData = JSON.parse(cleanedContent);
+        
+        return new Response(JSON.stringify({ 
+          success: true,
+          questions: quizData.questions || [],
+          filename,
+          mode,
+          timestamp: new Date().toISOString()
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (parseError) {
+        console.error("Failed to parse quiz questions:", parseError);
+        console.log("Raw response:", analysisContent.substring(0, 500));
+        
+        // Return an error so we can try again
+        return new Response(JSON.stringify({ 
+          error: "Failed to generate quiz questions. Please try again.",
+          rawResponse: analysisContent.substring(0, 200)
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // For other modes, return the analysis as text
     return new Response(JSON.stringify({ 
       success: true,
-      analysis,
+      analysis: analysisContent,
       filename,
       mode,
       timestamp: new Date().toISOString()
