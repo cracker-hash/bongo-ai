@@ -18,6 +18,33 @@ export interface MessageImage {
   type: 'uploaded' | 'generated';
 }
 
+export interface DocumentAttachment {
+  filename: string;
+  content: string;
+  type: 'pdf' | 'doc' | 'txt' | 'image';
+  analysis?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  correctAnswer?: string;
+  explanation?: string;
+  hint?: string;
+  userAnswer?: string;
+  isCorrect?: boolean;
+  attempts: number;
+}
+
+export interface QuizState {
+  isActive: boolean;
+  questions: QuizQuestion[];
+  currentQuestionIndex: number;
+  score: number;
+  totalQuestions: number;
+  documentContext?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -25,6 +52,8 @@ export interface Message {
   timestamp: Date;
   mode?: ChatMode;
   images?: MessageImage[];
+  document?: DocumentAttachment;
+  quizData?: QuizQuestion;
 }
 
 export interface ChatProject {

@@ -1,266 +1,426 @@
-import { useState } from 'react';
-import { CheckCircle2, XCircle, Trophy, RotateCcw, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  Lightbulb, 
+  Trophy, 
+  ArrowRight, 
+  Sparkles,
+  BookOpen,
+  Timer,
+  Volume2,
+  RotateCcw,
+  Send,
+  Loader2
+} from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { speak, getVoiceSettings } from '@/lib/textToSpeech';
 
 interface QuizQuestion {
   id: string;
   question: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
+  correctAnswer?: string;
+  explanation?: string;
+  hint?: string;
+  userAnswer?: string;
+  isCorrect?: boolean;
+  attempts: number;
 }
 
 interface QuizInterfaceProps {
-  topic: string;
+  questions: QuizQuestion[];
+  documentContext?: string;
   onComplete: (score: number, total: number) => void;
+  onAnswerSubmit: (questionId: string, answer: string, question: string) => Promise<{
+    isCorrect: boolean;
+    explanation: string;
+    additionalInfo?: string;
+  }>;
 }
 
-// Sample quiz questions generator
-const generateQuizQuestions = (topic: string): QuizQuestion[] => {
-  // In production, this would come from an AI API
-  const sampleQuestions: QuizQuestion[] = [
-    {
-      id: '1',
-      question: `What is the most important aspect of ${topic}?`,
-      options: ['Fundamental understanding', 'Memorization', 'Speed', 'Random guessing'],
-      correctIndex: 0,
-      explanation: 'Understanding the fundamentals is always the most important aspect of learning any topic.',
-    },
-    {
-      id: '2',
-      question: `Which approach works best when studying ${topic}?`,
-      options: ['Cramming', 'Spaced repetition', 'Ignoring it', 'Only reading'],
-      correctIndex: 1,
-      explanation: 'Spaced repetition has been proven to be the most effective learning technique.',
-    },
-    {
-      id: '3',
-      question: 'What helps retain information better?',
-      options: ['Passive reading', 'Active recall', 'Highlighting', 'Re-reading'],
-      correctIndex: 1,
-      explanation: 'Active recall forces your brain to retrieve information, strengthening memory pathways.',
-    },
-    {
-      id: '4',
-      question: 'How should you approach difficult concepts?',
-      options: ['Skip them', 'Break them into smaller parts', 'Memorize without understanding', 'Give up'],
-      correctIndex: 1,
-      explanation: 'Breaking complex concepts into smaller, manageable parts makes learning easier.',
-    },
-    {
-      id: '5',
-      question: 'What is the best time to review material?',
-      options: ['Right before sleeping', 'Never', 'Only during exams', 'Randomly'],
-      correctIndex: 0,
-      explanation: 'Reviewing before sleep helps consolidate memories during rest.',
-    },
-  ];
-  
-  return sampleQuestions;
-};
-
-export function QuizInterface({ topic, onComplete }: QuizInterfaceProps) {
-  const [questions] = useState(() => generateQuizQuestions(topic));
+export function QuizInterface({ 
+  questions, 
+  documentContext, 
+  onComplete, 
+  onAnswerSubmit 
+}: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResult, setShowResult] = useState(false);
-  const [score, setScore] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
-  const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [lastResult, setLastResult] = useState<{ isCorrect: boolean; explanation: string; additionalInfo?: string } | null>(null);
+  const [localQuestions, setLocalQuestions] = useState(questions);
+  const [showHint, setShowHint] = useState(false);
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [quizComplete, setQuizComplete] = useState(false);
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = localQuestions[currentIndex];
+  const score = localQuestions.filter(q => q.isCorrect).length;
+  const progress = ((currentIndex + (showResult && lastResult?.isCorrect ? 1 : 0)) / localQuestions.length) * 100;
 
-  const handleSelectAnswer = (index: number) => {
-    if (showResult) return;
-    setSelectedAnswer(index);
-  };
+  // Timer effect
+  useEffect(() => {
+    if (timerEnabled && timeLeft > 0 && !showResult) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [timerEnabled, timeLeft, showResult]);
 
-  const handleSubmitAnswer = () => {
-    if (selectedAnswer === null) return;
-    
-    setShowResult(true);
-    const newAnswers = [...answers, selectedAnswer];
-    setAnswers(newAnswers);
-    
-    if (selectedAnswer === currentQuestion.correctIndex) {
-      setScore(s => s + 1);
+  const speakText = useCallback((text: string) => {
+    const settings = getVoiceSettings();
+    if (settings.enabled) {
+      speak({
+        text,
+        voice: settings.voiceId,
+        rate: settings.speed,
+        useElevenLabs: settings.useElevenLabs
+      });
+    }
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!userAnswer.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await onAnswerSubmit(currentQuestion.id, userAnswer, currentQuestion.question);
+      setLastResult(result);
+      setShowResult(true);
+
+      // Update local question state
+      setLocalQuestions(prev => prev.map((q, i) => 
+        i === currentIndex 
+          ? { ...q, userAnswer, isCorrect: result.isCorrect, attempts: q.attempts + 1 }
+          : q
+      ));
+
+      // Speak feedback
+      if (result.isCorrect) {
+        speakText(`Correct! ${result.additionalInfo?.slice(0, 150) || 'Great job!'}`);
+        // Auto-advance after delay
+        setTimeout(() => {
+          if (currentIndex < localQuestions.length - 1) {
+            handleNext();
+          } else {
+            completeQuiz();
+          }
+        }, 4000);
+      } else {
+        speakText(`Not quite right. ${result.explanation.slice(0, 200)}`);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check answer. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleNextQuestion = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(i => i + 1);
-      setSelectedAnswer(null);
+  const handleNext = () => {
+    if (currentIndex < localQuestions.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setUserAnswer('');
       setShowResult(false);
-    } else {
-      setIsComplete(true);
-      onComplete(score + (selectedAnswer === currentQuestion.correctIndex ? 1 : 0), questions.length);
+      setLastResult(null);
+      setShowHint(false);
+      setTimeLeft(30);
     }
   };
 
-  const handleRestart = () => {
-    setCurrentIndex(0);
-    setSelectedAnswer(null);
+  const handleTryAgain = () => {
+    setUserAnswer('');
     setShowResult(false);
-    setScore(0);
-    setIsComplete(false);
-    setAnswers([]);
+    setLastResult(null);
   };
 
-  if (isComplete) {
-    const finalScore = score;
-    const percentage = Math.round((finalScore / questions.length) * 100);
+  const completeQuiz = () => {
+    setQuizComplete(true);
+    const finalScore = localQuestions.filter(q => q.isCorrect).length + (lastResult?.isCorrect ? 1 : 0);
+    onComplete(finalScore, localQuestions.length);
+  };
+
+  const readQuestion = () => {
+    speakText(currentQuestion.question);
+  };
+
+  if (quizComplete) {
+    const finalScore = localQuestions.filter(q => q.isCorrect).length;
+    const percentage = Math.round((finalScore / localQuestions.length) * 100);
     
     return (
-      <div className="bg-muted/30 rounded-2xl p-6 border border-border/50 text-center">
-        <div className="mb-6">
-          <Trophy className={cn(
-            "h-16 w-16 mx-auto mb-4",
-            percentage >= 80 ? "text-gold" : percentage >= 60 ? "text-secondary" : "text-muted-foreground"
-          )} />
-          <h3 className="font-display text-2xl font-bold mb-2">Quiz Complete!</h3>
-          <p className="text-muted-foreground">Topic: {topic}</p>
-        </div>
-
-        <div className="bg-card/50 rounded-xl p-6 mb-6">
-          <div className="text-5xl font-bold gradient-text mb-2">
-            {finalScore}/{questions.length}
+      <div className="bg-gradient-to-br from-card to-muted/50 rounded-2xl p-8 border border-border/50 shadow-xl animate-fade-in max-w-2xl mx-auto">
+        <div className="text-center space-y-6">
+          {/* Trophy animation */}
+          <div className="relative w-28 h-28 mx-auto">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full blur-2xl opacity-40 animate-pulse" />
+            <div className="relative w-full h-full bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center shadow-xl">
+              <Trophy className="w-14 h-14 text-white" />
+            </div>
           </div>
-          <p className="text-lg text-muted-foreground">
-            {percentage}% correct
-          </p>
-          <div className="mt-4 h-3 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full gradient-bg transition-all duration-500"
-              style={{ width: `${percentage}%` }}
-            />
+          
+          <div>
+            <h2 className="text-3xl font-bold gradient-text mb-2">Quiz Complete!</h2>
+            <p className="text-muted-foreground">You've finished all questions</p>
           </div>
+
+          <div className="bg-muted/50 rounded-xl p-6 space-y-4">
+            <div className="text-6xl font-bold">
+              <span className={cn(
+                percentage >= 70 ? "text-emerald-400" : 
+                percentage >= 50 ? "text-amber-400" : "text-red-400"
+              )}>
+                {finalScore}
+              </span>
+              <span className="text-muted-foreground text-3xl">/{localQuestions.length}</span>
+            </div>
+            
+            <Progress value={percentage} className="h-4" />
+            
+            <p className="text-xl font-medium">
+              {percentage >= 90 && "🌟 Outstanding! You've mastered this material!"}
+              {percentage >= 70 && percentage < 90 && "🎉 Great job! You have a solid understanding."}
+              {percentage >= 50 && percentage < 70 && "👍 Good effort! Review the topics you missed."}
+              {percentage < 50 && "📚 Keep studying! Review the material and try again."}
+            </p>
+          </div>
+
+          <Button 
+            onClick={() => {
+              setQuizComplete(false);
+              setCurrentIndex(0);
+              setLocalQuestions(questions.map(q => ({ ...q, isCorrect: undefined, userAnswer: undefined, attempts: 0 })));
+              setUserAnswer('');
+              setShowResult(false);
+              setLastResult(null);
+            }}
+            className="gap-2 gradient-bg hover:opacity-90 px-8 py-6 text-lg"
+          >
+            <RotateCcw className="w-5 h-5" />
+            Try Again
+          </Button>
         </div>
-
-        <p className="text-muted-foreground mb-6">
-          {percentage >= 80 
-            ? "🎉 Excellent work! You've mastered this topic!" 
-            : percentage >= 60 
-            ? "👍 Good job! Keep practicing to improve."
-            : "📚 Keep studying! Practice makes perfect."}
-        </p>
-
-        <Button 
-          onClick={handleRestart}
-          className="gradient-bg hover:opacity-90 gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Try Again
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="bg-muted/30 rounded-2xl p-6 border border-border/50">
-      {/* Progress */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-muted-foreground">
-          Question {currentIndex + 1} of {questions.length}
-        </span>
-        <span className="text-sm font-medium text-primary">
-          Score: {score}
-        </span>
-      </div>
-      
-      <div className="h-2 bg-muted rounded-full mb-6 overflow-hidden">
-        <div 
-          className="h-full gradient-bg transition-all duration-300"
-          style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-        />
-      </div>
-
-      {/* Question */}
-      <h3 className="font-display text-lg font-semibold mb-6">
-        {currentQuestion.question}
-      </h3>
-
-      {/* Options */}
-      <div className="space-y-3 mb-6">
-        {currentQuestion.options.map((option, index) => {
-          const isCorrect = index === currentQuestion.correctIndex;
-          const isSelected = selectedAnswer === index;
-          
-          return (
-            <button
-              key={index}
-              onClick={() => handleSelectAnswer(index)}
-              disabled={showResult}
-              className={cn(
-                "w-full text-left p-4 rounded-xl border transition-all",
-                showResult
-                  ? isCorrect
-                    ? "bg-green-500/20 border-green-500/50 text-green-400"
-                    : isSelected
-                    ? "bg-red-500/20 border-red-500/50 text-red-400"
-                    : "bg-muted/30 border-border/50 opacity-50"
-                  : isSelected
-                  ? "bg-primary/20 border-primary/50"
-                  : "bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <span className={cn(
-                  "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-medium text-sm",
-                  showResult && isCorrect 
-                    ? "bg-green-500/30" 
-                    : showResult && isSelected 
-                    ? "bg-red-500/30"
-                    : isSelected 
-                    ? "bg-primary/30" 
-                    : "bg-muted"
-                )}>
-                  {showResult && isCorrect ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-400" />
-                  ) : showResult && isSelected ? (
-                    <XCircle className="h-5 w-5 text-red-400" />
-                  ) : (
-                    String.fromCharCode(65 + index)
-                  )}
-                </span>
-                <span className="text-foreground">{option}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Explanation */}
-      {showResult && (
-        <div className="bg-card/50 rounded-xl p-4 mb-6 border border-border/50">
-          <div className="flex items-start gap-2">
-            <Sparkles className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+    <div className="bg-gradient-to-br from-card to-muted/50 rounded-2xl border border-border/50 shadow-xl overflow-hidden max-w-2xl mx-auto">
+      {/* Header with progress */}
+      <div className="bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 p-5 border-b border-border/50">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
             <div>
-              <p className="font-medium text-sm mb-1">Explanation</p>
-              <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
+              <span className="font-semibold text-lg">Quiz Mode</span>
+              <p className="text-xs text-muted-foreground">Short-answer questions</p>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-amber-500/20 px-3 py-1.5 rounded-full">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="font-bold text-amber-400">{score}</span>
+              <span className="text-amber-400/70 text-sm">pts</span>
+            </div>
+            {timerEnabled && (
+              <div className={cn(
+                "flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-full font-mono text-sm",
+                timeLeft <= 10 && "bg-red-500/20 text-red-400 animate-pulse"
+              )}>
+                <Timer className="w-4 h-4" />
+                {timeLeft}s
+              </div>
+            )}
+          </div>
         </div>
-      )}
+        
+        <div className="flex items-center gap-3">
+          <Progress value={progress} className="h-3 flex-1" />
+          <span className="text-sm font-medium bg-muted/50 px-2 py-1 rounded">
+            {currentIndex + 1}/{localQuestions.length}
+          </span>
+        </div>
+      </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
+      {/* Question Area */}
+      <div className="p-6 space-y-6">
+        {/* Question */}
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Question {currentIndex + 1}</p>
+              <h3 className="text-xl font-semibold leading-relaxed">
+                {currentQuestion.question}
+              </h3>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={readQuestion}
+              className="flex-shrink-0 hover:bg-primary/20"
+            >
+              <Volume2 className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          {/* Hint button - appears after 2 failed attempts */}
+          {currentQuestion.attempts >= 2 && !showResult && currentQuestion.hint && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHint(true)}
+              className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 gap-2"
+            >
+              <Lightbulb className="w-4 h-4" />
+              Need a hint?
+            </Button>
+          )}
+          
+          {showHint && currentQuestion.hint && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 animate-fade-in">
+              <div className="flex items-center gap-2 text-amber-400 font-medium mb-2">
+                <Lightbulb className="w-4 h-4" />
+                Hint
+              </div>
+              <p className="text-muted-foreground">{currentQuestion.hint}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Answer Input or Result */}
         {!showResult ? (
-          <Button
-            onClick={handleSubmitAnswer}
-            disabled={selectedAnswer === null}
-            className="gradient-bg hover:opacity-90"
-          >
-            Submit Answer
-          </Button>
+          <div className="space-y-4">
+            <div className="relative">
+              <Textarea
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+                placeholder="Type your answer here... Be specific and thorough in your response."
+                className="min-h-[140px] bg-muted/30 border-2 border-border/50 focus:border-primary/50 resize-none text-base pr-14"
+                disabled={isSubmitting}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    handleSubmit();
+                  }
+                }}
+              />
+              <Button
+                onClick={handleSubmit}
+                disabled={!userAnswer.trim() || isSubmitting}
+                size="icon"
+                className="absolute bottom-3 right-3 h-10 w-10 rounded-xl gradient-bg hover:opacity-90 shadow-lg"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTimerEnabled(!timerEnabled)}
+                className={cn(
+                  "gap-2",
+                  timerEnabled && "text-primary bg-primary/10"
+                )}
+              >
+                <Timer className="w-4 h-4" />
+                {timerEnabled ? "Timer: 30s" : "Enable Timer"}
+              </Button>
+              
+              <p className="text-xs text-muted-foreground">
+                Press Ctrl+Enter to submit
+              </p>
+            </div>
+          </div>
         ) : (
-          <Button
-            onClick={handleNextQuestion}
-            className="gradient-bg hover:opacity-90"
-          >
-            {currentIndex < questions.length - 1 ? 'Next Question' : 'See Results'}
-          </Button>
+          /* Result Display */
+          <div className={cn(
+            "rounded-xl p-6 space-y-4 animate-fade-in border-2",
+            lastResult?.isCorrect 
+              ? "bg-emerald-500/10 border-emerald-500/40" 
+              : "bg-red-500/10 border-red-500/40"
+          )}>
+            <div className="flex items-center gap-4">
+              {lastResult?.isCorrect ? (
+                <>
+                  <div className="w-14 h-14 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-emerald-400">Correct! 🎉</h4>
+                    <p className="text-sm text-muted-foreground">Excellent understanding!</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-14 h-14 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <XCircle className="w-8 h-8 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-red-400">Not Quite Right</h4>
+                    <p className="text-sm text-muted-foreground">Let's learn from this</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Explanation */}
+            <div className="bg-background/60 rounded-xl p-5 border border-border/30">
+              <h5 className="font-semibold mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                {lastResult?.isCorrect ? "Additional Information:" : "Deep Explanation:"}
+              </h5>
+              <p className="text-muted-foreground leading-relaxed">
+                {lastResult?.isCorrect 
+                  ? lastResult.additionalInfo || lastResult.explanation
+                  : lastResult?.explanation}
+              </p>
+            </div>
+
+            {/* Actions */}
+            {!lastResult?.isCorrect && (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={handleTryAgain}
+                  className="flex-1 gap-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+                  variant="ghost"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Try Again
+                </Button>
+                {currentIndex < localQuestions.length - 1 && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleNext}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Skip to Next
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {lastResult?.isCorrect && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pt-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Moving to next question...
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

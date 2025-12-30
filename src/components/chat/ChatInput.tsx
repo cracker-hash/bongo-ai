@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent, ChangeEvent } from 'react';
-import { Send, ChevronDown, Paperclip, Mic, Square, X, Loader2, Phone } from 'lucide-react';
+import { Send, ChevronDown, Paperclip, Mic, Square, X, Loader2, Phone, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useChat } from '@/contexts/ChatContext';
@@ -22,24 +22,31 @@ import {
 } from "@/components/ui/tooltip";
 
 interface ChatInputProps {
-  onSend: (message: string, images?: string[]) => void;
+  onSend: (message: string, images?: string[], document?: { filename: string; content: string; type: string }) => void;
 }
 
 export function ChatInput({ onSend }: ChatInputProps) {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [attachedDocument, setAttachedDocument] = useState<{ filename: string; content: string; type: string } | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const { currentMode, currentModel, setCurrentMode, setCurrentModel, isLoading } = useChat();
 
   const handleSend = () => {
-    if ((input.trim() || attachedImages.length > 0) && !isLoading) {
-      onSend(input.trim(), attachedImages.length > 0 ? attachedImages : undefined);
+    if ((input.trim() || attachedImages.length > 0 || attachedDocument) && !isLoading) {
+      onSend(
+        input.trim(), 
+        attachedImages.length > 0 ? attachedImages : undefined,
+        attachedDocument || undefined
+      );
       setInput('');
       setAttachedImages([]);
+      setAttachedDocument(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
@@ -55,18 +62,17 @@ export function ChatInput({ onSend }: ChatInputProps) {
 
   const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // Auto-resize
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
     }
   };
 
-  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setIsProcessingImage(true);
+    setIsProcessingFile(true);
     
     try {
       const newImages: string[] = [];
@@ -75,13 +81,13 @@ export function ChatInput({ onSend }: ChatInputProps) {
         if (!file.type.startsWith('image/')) {
           toast({
             title: "Invalid file",
-            description: "Only image files are supported",
+            description: "Only image files are supported here",
             variant: "destructive"
           });
           continue;
         }
 
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        if (file.size > 10 * 1024 * 1024) {
           toast({
             title: "File too large",
             description: "Image must be less than 10MB",
@@ -90,7 +96,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
           continue;
         }
 
-        // Convert to base64
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -102,7 +107,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
       }
 
       if (newImages.length > 0) {
-        setAttachedImages(prev => [...prev, ...newImages].slice(0, 4)); // Max 4 images
+        setAttachedImages(prev => [...prev, ...newImages].slice(0, 4));
         toast({ description: `${newImages.length} image(s) attached` });
       }
     } catch (error) {
@@ -112,16 +117,88 @@ export function ChatInput({ onSend }: ChatInputProps) {
         variant: "destructive"
       });
     } finally {
-      setIsProcessingImage(false);
-      // Reset file input
+      setIsProcessingFile(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
 
+  const handleDocumentSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingFile(true);
+    
+    try {
+      const maxSize = 5 * 1024 * 1024; // 5MB for documents
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Document must be less than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      let content = '';
+      let type = 'txt';
+
+      // Determine file type
+      if (file.name.endsWith('.pdf')) {
+        type = 'pdf';
+        // For PDFs, we'll read as base64 and let the backend process it
+        content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Extract base64 part
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+        type = 'doc';
+        // Read as text (basic support)
+        content = await file.text();
+      } else {
+        // Plain text files
+        type = 'txt';
+        content = await file.text();
+      }
+
+      setAttachedDocument({
+        filename: file.name,
+        content,
+        type
+      });
+
+      toast({ 
+        description: `📄 ${file.name} attached`,
+      });
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process document",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingFile(false);
+      if (docInputRef.current) {
+        docInputRef.current.value = '';
+      }
+    }
+  };
+
   const removeImage = (index: number) => {
     setAttachedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeDocument = () => {
+    setAttachedDocument(null);
   };
 
   const handleVoiceInput = async () => {
@@ -171,19 +248,27 @@ export function ChatInput({ onSend }: ChatInputProps) {
   return (
     <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-3xl mx-auto p-4">
-        {/* Hidden file input */}
+        {/* Hidden file inputs */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
           className="hidden"
-          onChange={handleFileSelect}
+          onChange={handleImageSelect}
+        />
+        <input
+          ref={docInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.md"
+          className="hidden"
+          onChange={handleDocumentSelect}
         />
 
-        {/* Attached images preview */}
-        {attachedImages.length > 0 && (
+        {/* Attached files preview */}
+        {(attachedImages.length > 0 || attachedDocument) && (
           <div className="flex gap-2 mb-3 flex-wrap">
+            {/* Images */}
             {attachedImages.map((img, index) => (
               <div key={index} className="relative group">
                 <img
@@ -201,6 +286,29 @@ export function ChatInput({ onSend }: ChatInputProps) {
                 </Button>
               </div>
             ))}
+            
+            {/* Document */}
+            {attachedDocument && (
+              <div className="relative group flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border border-border">
+                <FileText className="h-5 w-5 text-primary" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium truncate max-w-[150px]">
+                    {attachedDocument.filename}
+                  </span>
+                  <span className="text-xs text-muted-foreground uppercase">
+                    {attachedDocument.type}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 ml-2 hover:bg-destructive/20 hover:text-destructive"
+                  onClick={removeDocument}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -281,7 +389,13 @@ export function ChatInput({ onSend }: ChatInputProps) {
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder={attachedImages.length > 0 ? "Add a message about your image(s)..." : "Type your message..."}
+            placeholder={
+              attachedDocument 
+                ? `Ask about "${attachedDocument.filename}"...` 
+                : attachedImages.length > 0 
+                ? "Add a message about your image(s)..." 
+                : "Type your message..."
+            }
             className="min-h-[60px] max-h-[200px] bg-transparent border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 py-3 px-4 text-foreground placeholder:text-muted-foreground"
             rows={1}
           />
@@ -289,6 +403,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
           {/* Bottom row with actions */}
           <div className="flex items-center justify-between px-3 pb-3">
             <div className="flex items-center gap-1">
+              {/* Image attachment */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -297,9 +412,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isProcessingImage || attachedImages.length >= 4}
+                      disabled={isProcessingFile || attachedImages.length >= 4}
                     >
-                      {isProcessingImage ? (
+                      {isProcessingFile ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Paperclip className="h-4 w-4" />
@@ -310,6 +425,34 @@ export function ChatInput({ onSend }: ChatInputProps) {
                 </Tooltip>
               </TooltipProvider>
 
+              {/* Document attachment - highlighted for Study/Quiz modes */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8",
+                        (currentMode === 'study' || currentMode === 'quiz') 
+                          ? "text-primary hover:text-primary hover:bg-primary/10" 
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => docInputRef.current?.click()}
+                      disabled={isProcessingFile || !!attachedDocument}
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {currentMode === 'study' || currentMode === 'quiz' 
+                      ? "Upload document for analysis" 
+                      : "Attach document (PDF, TXT, DOC)"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Voice input */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -330,7 +473,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
                   <TooltipContent>{isRecording ? 'Stop recording' : 'Voice input'}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-
 
               {/* Voice conversation button */}
               <TooltipProvider>
@@ -354,7 +496,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
+              disabled={(!input.trim() && attachedImages.length === 0 && !attachedDocument) || isLoading}
               className="h-9 w-9 rounded-xl gradient-bg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="h-4 w-4" />
@@ -363,7 +505,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Wiser AI can make mistakes. Check important info.
+          {currentMode === 'study' || currentMode === 'quiz' 
+            ? "📄 Upload documents (PDF, TXT) for personalized learning" 
+            : "Wiser AI can make mistakes. Check important info."}
         </p>
       </div>
 
