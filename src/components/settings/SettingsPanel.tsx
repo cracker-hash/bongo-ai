@@ -169,13 +169,13 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      {/* Header with back button */}
-      <div className="flex items-center gap-3 p-4 border-b border-sidebar-border/50">
+      {/* Header with back button - sticky at top */}
+      <div className="sticky top-0 z-10 flex items-center gap-3 p-4 border-b border-sidebar-border/50 bg-sidebar">
         <Button 
-          variant="ghost" 
+          variant="outline" 
           size="icon" 
           onClick={onBack}
-          className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+          className="h-9 w-9 rounded-full border-sidebar-border hover:bg-sidebar-accent"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
