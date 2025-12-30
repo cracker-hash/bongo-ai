@@ -166,22 +166,22 @@ export function Sidebar() {
     <div
       key={chat.id}
       className={cn(
-        "group/chat flex items-center gap-2.5 p-3 rounded-xl cursor-pointer transition-all duration-200",
-        "bg-[#1e1e1e] border border-[#333]/50",
-        "hover:bg-[#252525] hover:border-[#444]",
-        currentChatId === chat.id && "border-l-2 border-l-primary bg-[#252525] shadow-lg"
+        "group/chat flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all duration-200",
+        currentChatId === chat.id 
+          ? "bg-sidebar-accent shadow-chat-item" 
+          : "hover:bg-sidebar-accent/60 hover:shadow-chat-hover"
       )}
       onClick={() => selectChat(chat.id)}
     >
-      {chat.isPinned && <Pin className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />}
+      {chat.isPinned && <Pin className="h-3 w-3 text-primary shrink-0" />}
       <span className={cn("shrink-0", MODE_INFO[chat.mode].color)}>
         {modeIcons[chat.mode]}
       </span>
-      <div className="flex-1 min-w-0 pr-1">
-        <p className="text-sm text-white font-medium truncate leading-tight">{chat.name}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-sidebar-foreground truncate">{chat.name}</p>
       </div>
       <div className={cn(
-        "shrink-0 transition-opacity duration-200",
+        "transition-opacity duration-200",
         currentChatId === chat.id ? "opacity-100" : "opacity-0 group-hover/chat:opacity-100"
       )}>
         <ChatMenu
