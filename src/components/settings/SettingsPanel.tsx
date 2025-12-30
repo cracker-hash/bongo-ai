@@ -176,19 +176,31 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
   return (
     <div className="flex flex-col h-full bg-sidebar overflow-hidden">
       {/* Header with back button - FIXED at top */}
-      <div className="shrink-0 flex items-center gap-3 p-4 border-b border-sidebar-border/50 bg-sidebar">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={onBack}
-          className="h-9 w-9 rounded-full border-sidebar-border hover:bg-sidebar-accent"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-2">
-          <img src={wiserLogo} alt="Wiser AI" className="h-6 w-6" />
-          <h2 className="text-lg font-semibold text-sidebar-foreground">Settings</h2>
+      <div className="shrink-0 flex flex-col border-b border-sidebar-border/50 bg-sidebar">
+        <div className="flex items-center gap-3 p-4">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={onBack}
+            className="h-9 w-9 rounded-full border-sidebar-border hover:bg-sidebar-accent"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <img src={wiserLogo} alt="Wiser AI" className="h-6 w-6" />
+            <h2 className="text-lg font-semibold text-sidebar-foreground">Settings</h2>
+          </div>
         </div>
+        {/* Back to Chat History button */}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={onBack}
+          className="mx-4 mb-3 justify-start gap-2 text-muted-foreground hover:text-sidebar-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Chat History
+        </Button>
       </div>
 
       {/* Hidden file input */}
