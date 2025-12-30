@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
-import { Message, ChatMode, AIModel, MessageImage } from '@/types/chat';
+import { Message, ChatMode, AIModel, MessageImage, DocumentAttachment } from '@/types/chat';
 import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
@@ -16,7 +16,8 @@ interface ChatContextType {
   isLoadingChats: boolean;
   setCurrentMode: (mode: ChatMode) => void;
   setCurrentModel: (model: AIModel) => void;
-  sendMessage: (content: string, images?: string[]) => Promise<void>;
+  sendMessage: (content: string, images?: string[], document?: DocumentAttachment) => Promise<void>;
+  addAssistantMessage: (content: string) => void;
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
   createNewChat: () => Promise<void>;
@@ -144,7 +145,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await moveChatToProjectStorage(id, projectId);
   }, [moveChatToProjectStorage]);
 
-  const sendMessage = useCallback(async (content: string, images?: string[]) => {
+  const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
     // Check if this is an image generation request
     const isImageGenRequest = content.toLowerCase().startsWith('generate an image:') || 
                               content.toLowerCase().startsWith('create an image:') ||
@@ -160,6 +161,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       timestamp: new Date(),
       mode: currentMode,
       images: userImages.length > 0 ? userImages : undefined,
+      document: document || undefined,
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -279,6 +281,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setCurrentChatId(null);
   }, []);
 
+  // Add assistant message directly (for document processing responses)
+  const addAssistantMessage = useCallback((content: string) => {
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content,
+      timestamp: new Date(),
+      mode: currentMode,
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+  }, [currentMode]);
+
   return (
     <ChatContext.Provider
       value={{
@@ -293,6 +307,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setCurrentMode,
         setCurrentModel,
         sendMessage,
+        addAssistantMessage,
         clearMessages,
         setSidebarOpen,
         createNewChat,

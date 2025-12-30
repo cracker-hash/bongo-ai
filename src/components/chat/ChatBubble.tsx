@@ -13,7 +13,9 @@ import {
   ThumbsDown,
   Download,
   ZoomIn,
-  Loader2
+  Loader2,
+  FileText,
+  FileType
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -168,6 +170,29 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
           <span>·</span>
           <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
+
+        {/* Attached Document */}
+        {message.document && (
+          <div className={cn("flex", isUser && "justify-end")}>
+            <div className="flex items-center gap-3 bg-muted/60 rounded-xl px-4 py-3 border border-border/50 max-w-xs">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                {message.document.type === 'pdf' ? (
+                  <FileType className="h-5 w-5 text-primary" />
+                ) : (
+                  <FileText className="h-5 w-5 text-primary" />
+                )}
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium truncate">
+                  {message.document.filename}
+                </span>
+                <span className="text-xs text-muted-foreground uppercase">
+                  {message.document.type} Document
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Attached/Generated Images */}
         {message.images && message.images.length > 0 && (

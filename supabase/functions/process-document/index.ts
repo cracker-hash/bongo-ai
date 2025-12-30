@@ -245,6 +245,7 @@ ${content}`;
     // For other modes, return the analysis as text
     return new Response(JSON.stringify({ 
       success: true,
+      summary: analysisContent,
       analysis: analysisContent,
       filename,
       mode,
