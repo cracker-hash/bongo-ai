@@ -30,6 +30,7 @@ import { ChatMenu } from '@/components/chat/ChatMenu';
 import { ProjectMenu } from '@/components/layout/ProjectMenu';
 import { CreateProjectDialog } from '@/components/layout/CreateProjectDialog';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
+import { XpStats } from '@/components/gamification/XpStats';
 import { useState, useMemo } from 'react';
 import {
   Collapsible,
@@ -274,7 +275,7 @@ export function Sidebar() {
         </div>
 
         {/* 2. SEARCH CHAT */}
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -285,6 +286,13 @@ export function Sidebar() {
             />
           </div>
         </div>
+
+        {/* XP Stats - Show for authenticated users */}
+        {isAuthenticated && (
+          <div className="px-3 pb-3">
+            <XpStats />
+          </div>
+        )}
 
         {/* Scrollable Content Area */}
         <ScrollArea className="flex-1 px-3">
