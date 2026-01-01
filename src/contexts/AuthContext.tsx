@@ -15,6 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
@@ -100,6 +101,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }, []);
 
+  const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    setShowAuthModal(false);
+    return { success: true };
+  }, []);
+
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -113,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         signup,
+        signInWithGoogle,
         logout,
         showAuthModal,
         setShowAuthModal,
