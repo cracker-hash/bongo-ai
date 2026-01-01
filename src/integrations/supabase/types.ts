@@ -100,6 +100,41 @@ export type Database = {
           },
         ]
       }
+      generated_images: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          id: string
+          prompt: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          prompt: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          prompt?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_images_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           chat_id: string
@@ -165,6 +200,42 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_gamification: {
+        Row: {
+          badges: string[] | null
+          created_at: string
+          id: string
+          last_activity_date: string | null
+          level: number
+          streak_days: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          badges?: string[] | null
+          created_at?: string
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          streak_days?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          badges?: string[] | null
+          created_at?: string
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          streak_days?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
         }
         Relationships: []
       }

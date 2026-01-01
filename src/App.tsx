@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import InstallGuide from "./pages/InstallGuide";
+import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
 import { OfflineIndicator, OnlineIndicator } from "./components/OfflineIndicator";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -31,6 +32,7 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/install" element={<InstallGuide />} />
+            <Route path="/gallery" element={<Gallery />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
