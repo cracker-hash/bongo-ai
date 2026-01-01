@@ -4,6 +4,7 @@ import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
 import { supabase } from '@/integrations/supabase/client';
+import { useGamification } from '@/hooks/useGamification';
 import { toast } from 'sonner';
 
 interface ChatContextType {
@@ -45,6 +46,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const streamingMessageRef = useRef<string>('');
 
   const { user, isAuthenticated } = useAuth();
+  const { awardXP } = useGamification();
   const {
     chats,
     isLoadingChats,
@@ -206,15 +208,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Auto-save generated image to gallery (Supabase)
+        // Auto-save generated image to gallery (Supabase) and award XP
         if (result.generatedImage && isAuthenticated && user) {
           try {
-            await supabase.from('generated_images').insert({
+            // Save to gallery
+            const { data: insertedImage } = await supabase.from('generated_images').insert({
               user_id: user.id,
               url: result.generatedImage,
               prompt: imagePrompt,
               chat_id: chatId || null,
-            });
+            }).select('id').single();
+            
+            // Get current image count for badge checking
+            const { count } = await supabase
+              .from('generated_images')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+            
+            // Award XP for image generation with image count for badges
+            awardXP('generateImage', undefined, count || 1);
+            
             toast.success('Image saved to gallery');
           } catch (saveError) {
             console.error('Failed to save image to gallery:', saveError);

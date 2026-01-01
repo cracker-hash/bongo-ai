@@ -18,18 +18,36 @@ export interface Badge {
   description: string;
   icon: string;
   requirement: number;
-  type: 'xp' | 'streak' | 'chats' | 'quizzes';
+  type: 'xp' | 'streak' | 'chats' | 'quizzes' | 'images' | 'level';
 }
 
 const BADGES: Badge[] = [
+  // Chat milestones
   { id: 'first_chat', name: 'First Steps', description: 'Send your first message', icon: '💬', requirement: 1, type: 'chats' },
+  
+  // XP milestones
   { id: 'xp_100', name: 'Rising Star', description: 'Earn 100 XP', icon: '⭐', requirement: 100, type: 'xp' },
   { id: 'xp_500', name: 'Knowledge Seeker', description: 'Earn 500 XP', icon: '🌟', requirement: 500, type: 'xp' },
   { id: 'xp_1000', name: 'Wisdom Master', description: 'Earn 1000 XP', icon: '🏆', requirement: 1000, type: 'xp' },
+  { id: 'xp_5000', name: 'Legend', description: 'Earn 5000 XP', icon: '👑', requirement: 5000, type: 'xp' },
+  
+  // Level milestones
+  { id: 'level_5', name: 'Level 5 Hero', description: 'Reach Level 5', icon: '🎖️', requirement: 5, type: 'level' },
+  { id: 'level_10', name: 'Level 10 Champion', description: 'Reach Level 10', icon: '🏅', requirement: 10, type: 'level' },
+  { id: 'level_20', name: 'Level 20 Master', description: 'Reach Level 20', icon: '🥇', requirement: 20, type: 'level' },
+  
+  // Streak milestones
   { id: 'streak_3', name: 'On Fire', description: '3 day streak', icon: '🔥', requirement: 3, type: 'streak' },
   { id: 'streak_7', name: 'Week Warrior', description: '7 day streak', icon: '💪', requirement: 7, type: 'streak' },
-  { id: 'streak_30', name: 'Dedicated Learner', description: '30 day streak', icon: '👑', requirement: 30, type: 'streak' },
-  { id: 'quiz_master', name: 'Quiz Master', description: 'Complete 10 quizzes', icon: '🎯', requirement: 10, type: 'quizzes' },
+  { id: 'streak_30', name: 'Dedicated Learner', description: '30 day streak', icon: '🎯', requirement: 30, type: 'streak' },
+  
+  // Image generation milestones
+  { id: 'images_1', name: 'First Creation', description: 'Generate your first image', icon: '🎨', requirement: 1, type: 'images' },
+  { id: 'images_10', name: 'Creative Artist', description: 'Generate 10 images', icon: '🖼️', requirement: 10, type: 'images' },
+  { id: 'images_50', name: 'Master Creator', description: 'Generate 50 images', icon: '🎭', requirement: 50, type: 'images' },
+  
+  // Quiz milestones  
+  { id: 'quiz_master', name: 'Quiz Master', description: 'Complete 10 quizzes', icon: '📚', requirement: 10, type: 'quizzes' },
 ];
 
 // XP rewards for different actions
@@ -43,6 +61,7 @@ const XP_REWARDS = {
   archiveChat: 5,
   dailyLogin: 10,
   studySession: 20,
+  generateImage: 15, // New: XP for image generation
 };
 
 const calculateLevel = (xp: number): number => {
@@ -104,8 +123,8 @@ export function useGamification() {
     }
   }, [isAuthenticated, user]);
 
-  // Award XP
-  const awardXP = useCallback(async (action: keyof typeof XP_REWARDS, customAmount?: number) => {
+  // Award XP with optional image count for badge tracking
+  const awardXP = useCallback(async (action: keyof typeof XP_REWARDS, customAmount?: number, imageCount?: number) => {
     if (!isAuthenticated || !user) return;
 
     const xpAmount = customAmount || XP_REWARDS[action];
@@ -138,6 +157,8 @@ export function useGamification() {
         let qualified = false;
         if (badge.type === 'xp' && newXP >= badge.requirement) qualified = true;
         if (badge.type === 'streak' && newStreak >= badge.requirement) qualified = true;
+        if (badge.type === 'level' && newLevel >= badge.requirement) qualified = true;
+        if (badge.type === 'images' && imageCount && imageCount >= badge.requirement) qualified = true;
         
         if (qualified) {
           newBadges.push(badge.id);
