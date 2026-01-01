@@ -3,6 +3,7 @@ import { Message, ChatMode, AIModel, MessageImage, DocumentAttachment } from '@/
 import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ChatContextType {
@@ -204,6 +205,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
+        
+        // Auto-save generated image to gallery (Supabase)
+        if (result.generatedImage && isAuthenticated && user) {
+          try {
+            await supabase.from('generated_images').insert({
+              user_id: user.id,
+              url: result.generatedImage,
+              prompt: imagePrompt,
+              chat_id: chatId || null,
+            });
+            toast.success('Image saved to gallery');
+          } catch (saveError) {
+            console.error('Failed to save image to gallery:', saveError);
+          }
+        }
         
         if (isAuthenticated && user && chatId) {
           await saveMessage(chatId, assistantMessage.content, 'assistant', currentMode);
