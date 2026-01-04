@@ -78,14 +78,26 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { content, filename, mode, question, userAnswer, documentContext, isPdf } = body;
+    const { content, filename, mode, question, userAnswer, documentContext, isPdf, fileBase64, fileName, fileType } = body;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
     }
 
-    console.log(`Processing request - mode: ${mode}, isPdf: ${isPdf}`);
+    console.log(`Processing request - mode: ${mode}, isPdf: ${isPdf}, fileType: ${fileType}`);
+
+    // Handle simple text extraction for podcast generator
+    if (fileBase64 && fileType === 'pdf') {
+      const extractedText = await extractPdfText(fileBase64, fileName || 'document.pdf');
+      return new Response(JSON.stringify({ 
+        success: true,
+        text: extractedText,
+        filename: fileName
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Handle answer validation mode
     if (mode === "validate-answer") {
