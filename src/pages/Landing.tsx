@@ -87,7 +87,7 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/chat" className="flex items-center gap-2">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <Brain className="h-6 w-6 text-white" />
             </div>
@@ -95,17 +95,17 @@ export default function Landing() {
           </Link>
           
           <div className="hidden md:flex items-center gap-8">
-            <Link to="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link>
+            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">API Docs</Link>
-            <Link to="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
-            <Link to="#support" className="text-muted-foreground hover:text-foreground transition-colors">Support</Link>
+            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#support" className="text-muted-foreground hover:text-foreground transition-colors">Support</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/">
+            <Link to="/chat">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link to="/">
+            <Link to="/chat">
               <Button className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
                 Get Started <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -134,7 +134,7 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link to="/">
+            <Link to="/chat">
               <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-14 px-8 text-lg">
                 Start Learning Free <Rocket className="ml-2 h-5 w-5" />
               </Button>
@@ -241,7 +241,7 @@ export default function Landing() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Join thousands of learners and developers who are already using WISER AI.
           </p>
-          <Link to="/">
+          <Link to="/chat">
             <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-14 px-8 text-lg">
               Get Started for Free <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -268,7 +268,7 @@ export default function Landing() {
             <div>
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link to="/" className="hover:text-foreground">Features</Link></li>
+                <li><Link to="/chat" className="hover:text-foreground">Features</Link></li>
                 <li><Link to="/docs" className="hover:text-foreground">API Docs</Link></li>
                 <li><Link to="#pricing" className="hover:text-foreground">Pricing</Link></li>
               </ul>
