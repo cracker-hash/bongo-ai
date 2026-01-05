@@ -33,8 +33,8 @@ const App = () => {
         <InstallPrompt />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/landing" element={<Landing />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/chat" element={<Index />} />
             <Route path="/docs" element={<ApiDocs />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/dashboard" element={<Dashboard />} />
