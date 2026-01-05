@@ -7,8 +7,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, QuizQuestion, DocumentAttachment } from '@/types/chat';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
-import { ManusPanel } from '@/components/manus/ManusPanel';
-import { Menu, Bot, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,7 +27,6 @@ export function ChatContainer() {
     questions: [],
     documentContext: ''
   });
-  const [showManusPanel, setShowManusPanel] = useState(false);
   const [isProcessingDocument, setIsProcessingDocument] = useState(false);
 
   useEffect(() => {
@@ -206,33 +204,6 @@ export function ChatContainer() {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="font-medium text-sm">Wiser AI</span>
-        </div>
-      )}
-
-      {/* Manus Panel Toggle Button */}
-      <Button
-        variant={showManusPanel ? "default" : "outline"}
-        size="sm"
-        onClick={() => setShowManusPanel(!showManusPanel)}
-        className="fixed bottom-24 right-4 z-50 gap-2 shadow-lg"
-      >
-        {showManusPanel ? (
-          <>
-            <X className="h-4 w-4" />
-            Close Manus
-          </>
-        ) : (
-          <>
-            <Bot className="h-4 w-4" />
-            Manus AI
-          </>
-        )}
-      </Button>
-
-      {/* Manus Panel */}
-      {showManusPanel && (
-        <div className="fixed right-4 bottom-36 z-50 w-[400px] max-h-[70vh] overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
-          <ManusPanel onClose={() => setShowManusPanel(false)} />
         </div>
       )}
 
