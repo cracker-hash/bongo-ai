@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { 
   Brain, Check, ArrowLeft, Zap, Shield, Headphones,
-  Star, ChevronRight
+  Star, ChevronRight, Loader2
 } from 'lucide-react';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { STRIPE_TIERS, getTierByProductId, TierKey } from '@/lib/stripeConfig';
 
 const plans = [
   {
@@ -16,19 +20,20 @@ const plans = [
     description: 'Perfect for getting started',
     monthlyPrice: 0,
     yearlyPrice: 0,
+    priceId: null,
     features: [
       '1,000 API requests/month',
-      '5 podcast generations',
+      '1 podcast generation',
       'Basic chat modes (Study, Quiz)',
       'Community support',
-      '100K tokens/month'
+      '10K tokens/month'
     ],
     limitations: [
       'No Manus automation',
       'No API access',
       'Basic voice only'
     ],
-    cta: 'Get Started Free',
+    cta: 'Current Plan',
     popular: false
   },
   {
@@ -37,12 +42,14 @@ const plans = [
     description: 'For growing learners',
     monthlyPrice: 20,
     yearlyPrice: 192,
+    priceId: STRIPE_TIERS.lite.price_id,
+    productId: STRIPE_TIERS.lite.product_id,
     features: [
-      '10,000 API requests/month',
-      '50 podcast generations',
+      '5,000 API requests/month',
+      '5 podcast generations',
       'All chat modes',
       'Priority email support',
-      '1M tokens/month',
+      '100K tokens/month',
       'Project management',
       'Basic analytics'
     ],
@@ -50,7 +57,7 @@ const plans = [
       'Limited Manus automation',
       'Basic API access'
     ],
-    cta: 'Start 14-Day Trial',
+    cta: 'Subscribe',
     popular: false
   },
   {
@@ -59,19 +66,20 @@ const plans = [
     description: 'For power users',
     monthlyPrice: 40,
     yearlyPrice: 384,
+    priceId: STRIPE_TIERS.pro.price_id,
+    productId: STRIPE_TIERS.pro.product_id,
     features: [
-      '100,000 API requests/month',
-      'Unlimited podcasts',
+      '25,000 API requests/month',
+      '25 podcasts',
       'Full Manus automation',
       'Full API access',
-      '10M tokens/month',
+      '500K tokens/month',
       'Advanced analytics',
       'Custom integrations',
-      'Priority support',
-      'Team collaboration (5 seats)'
+      'Priority support'
     ],
     limitations: [],
-    cta: 'Start 14-Day Trial',
+    cta: 'Subscribe',
     popular: true
   },
   {
@@ -80,20 +88,20 @@ const plans = [
     description: 'Enterprise-grade solution',
     monthlyPrice: 200,
     yearlyPrice: 1920,
+    priceId: STRIPE_TIERS.max.price_id,
+    productId: STRIPE_TIERS.max.product_id,
     features: [
       'Unlimited API requests',
-      'Unlimited everything',
+      'Unlimited podcasts',
+      'Unlimited tokens',
       'White-label options',
       'Dedicated account manager',
       'Custom SLAs (99.99% uptime)',
-      'On-premise deployment',
-      'Unlimited team seats',
       'Advanced security (SSO, 2FA)',
-      'Custom model training',
       '24/7 phone support'
     ],
     limitations: [],
-    cta: 'Contact Sales',
+    cta: 'Subscribe',
     popular: false
   }
 ];
@@ -121,8 +129,93 @@ const faqs = [
   }
 ];
 
-export default function Pricing() {
+function PricingContent() {
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated, user } = useAuth();
   const [isYearly, setIsYearly] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [currentTier, setCurrentTier] = useState<TierKey>('free');
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+
+  useEffect(() => {
+    // Check for success/cancel params
+    if (searchParams.get('success') === 'true') {
+      toast.success('Subscription successful! Welcome to your new plan.');
+      checkSubscription();
+    } else if (searchParams.get('canceled') === 'true') {
+      toast.info('Checkout canceled. No changes made.');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user) {
+      checkSubscription();
+    }
+  }, [user]);
+
+  const checkSubscription = async () => {
+    setIsCheckingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) throw error;
+      
+      if (data?.product_id) {
+        setCurrentTier(getTierByProductId(data.product_id));
+      } else {
+        setCurrentTier('free');
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    } finally {
+      setIsCheckingSubscription(false);
+    }
+  };
+
+  const handleSubscribe = async (plan: typeof plans[0]) => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to subscribe');
+      return;
+    }
+
+    if (!plan.priceId) {
+      return; // Free plan
+    }
+
+    setLoadingPlan(plan.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId: plan.priceId }
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to start checkout. Please try again.');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setLoadingPlan('manage');
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Failed to open subscription management.');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
 
   const getPrice = (plan: typeof plans[0]) => {
     if (plan.monthlyPrice === 0) return 'Free';
@@ -137,13 +230,15 @@ export default function Pricing() {
     return Math.round((savings / monthlyCost) * 100);
   };
 
+  const isCurrentPlan = (planId: string) => planId === currentTier;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/landing" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
@@ -157,11 +252,18 @@ export default function Pricing() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="outline">Sign In</Button>
-            </Link>
-            <Link to="/">
-              <Button className="bg-gradient-to-r from-primary to-secondary">Get Started</Button>
+            {currentTier !== 'free' && (
+              <Button 
+                variant="outline" 
+                onClick={handleManageSubscription}
+                disabled={loadingPlan === 'manage'}
+              >
+                {loadingPlan === 'manage' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Manage Subscription
+              </Button>
+            )}
+            <Link to="/dashboard">
+              <Button variant="outline">Dashboard</Button>
             </Link>
           </div>
         </div>
@@ -203,13 +305,21 @@ export default function Pricing() {
                 className={`relative flex flex-col ${
                   plan.popular 
                     ? 'border-primary shadow-lg shadow-primary/20 scale-105' 
+                    : isCurrentPlan(plan.id)
+                    ? 'border-green-500 shadow-lg shadow-green-500/20'
                     : 'border-border/50'
                 }`}
               >
-                {plan.popular && (
+                {plan.popular && !isCurrentPlan(plan.id) && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Most Popular
+                  </div>
+                )}
+                {isCurrentPlan(plan.id) && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Your Plan
                   </div>
                 )}
                 
@@ -244,14 +354,17 @@ export default function Pricing() {
                   
                   <Button 
                     className={`w-full mt-6 ${
-                      plan.popular 
+                      plan.popular && !isCurrentPlan(plan.id)
                         ? 'bg-gradient-to-r from-primary to-secondary hover:opacity-90' 
                         : ''
                     }`}
-                    variant={plan.popular ? 'default' : 'outline'}
+                    variant={isCurrentPlan(plan.id) ? 'secondary' : plan.popular ? 'default' : 'outline'}
+                    onClick={() => handleSubscribe(plan)}
+                    disabled={loadingPlan === plan.id || isCurrentPlan(plan.id) || plan.id === 'free'}
                   >
-                    {plan.cta}
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    {loadingPlan === plan.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {isCurrentPlan(plan.id) ? 'Current Plan' : plan.cta}
+                    {!isCurrentPlan(plan.id) && plan.id !== 'free' && <ChevronRight className="h-4 w-4 ml-1" />}
                   </Button>
                 </CardContent>
               </Card>
@@ -322,5 +435,13 @@ export default function Pricing() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Pricing() {
+  return (
+    <AuthProvider>
+      <PricingContent />
+    </AuthProvider>
   );
 }

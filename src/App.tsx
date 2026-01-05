@@ -11,6 +11,7 @@ import Gallery from "./pages/Gallery";
 import Landing from "./pages/Landing";
 import ApiDocs from "./pages/ApiDocs";
 import Pricing from "./pages/Pricing";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { OfflineIndicator, OnlineIndicator } from "./components/OfflineIndicator";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -36,6 +37,7 @@ const App = () => {
             <Route path="/landing" element={<Landing />} />
             <Route path="/docs" element={<ApiDocs />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/install" element={<InstallGuide />} />
             <Route path="/gallery" element={<Gallery />} />
