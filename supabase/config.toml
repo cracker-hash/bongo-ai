@@ -1,12 +1,35 @@
 project_id = "gbbqdmgrjtdliiddikwq"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
 [functions.chat]
 verify_jwt = false
 
 [functions.elevenlabs-tts]
 verify_jwt = false
 
+[functions.generate-podcast]
+verify_jwt = false
+
 [functions.process-document]
+verify_jwt = false
+
+[functions.manus-automation]
 verify_jwt = false
 
 [functions.create-checkout]
@@ -16,4 +39,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.customer-portal]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.send-usage-alert]
+verify_jwt = false
+
+[functions.check-usage-limits]
 verify_jwt = false
