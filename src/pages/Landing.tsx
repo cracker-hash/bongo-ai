@@ -7,7 +7,7 @@ import {
   ArrowRight, Check, Star, Users, BookOpen, Globe,
   Sparkles, Bot, Rocket, ChevronRight
 } from 'lucide-react';
-import podcastIconLight from '@/assets/podcast-icon.png';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
 
 const features = [
   {
@@ -57,7 +57,7 @@ const pricingPlans = [
     price: '$20',
     period: '/month',
     description: 'For growing learners',
-    features: ['10,000 API requests/month', '50 podcast generations', 'All chat modes', 'Priority support', 'Project management'],
+    features: ['10,000 API requests/month', '50 podcast generations', 'All chat modes', 'Priority support', 'Project management', '5-day free trial'],
     cta: 'Start Free Trial',
     popular: false
   },
@@ -66,7 +66,7 @@ const pricingPlans = [
     price: '$40',
     period: '/month',
     description: 'For power users',
-    features: ['100,000 API requests/month', 'Unlimited podcasts', 'Wiser automation', 'API access', 'Advanced analytics', 'Custom integrations'],
+    features: ['100,000 API requests/month', 'Unlimited podcasts', 'Wiser automation', 'API access', 'Advanced analytics', 'Custom integrations', '5-day free trial'],
     cta: 'Start Free Trial',
     popular: true
   },
@@ -75,7 +75,7 @@ const pricingPlans = [
     price: '$200',
     period: '/month',
     description: 'Enterprise-grade solution',
-    features: ['Unlimited API requests', 'White-label options', 'Dedicated support', 'Custom SLAs', 'On-premise deployment', 'Team management'],
+    features: ['Unlimited API requests', 'White-label options', 'Dedicated support', 'Custom SLAs', 'On-premise deployment', 'Team management', '5-day free trial'],
     cta: 'Contact Sales',
     popular: false
   }
@@ -87,10 +87,8 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/chat" className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Brain className="h-6 w-6 text-white" />
-            </div>
+          <Link to="/" className="flex items-center gap-2">
+            <img src={wiserLogo} alt="Wiser AI" className="h-10 w-10 rounded-xl" />
             <span className="text-xl font-bold">WISER AI</span>
           </Link>
           
@@ -98,7 +96,7 @@ export default function Landing() {
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">API Docs</Link>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#support" className="text-muted-foreground hover:text-foreground transition-colors">Support</a>
+            <Link to="/support" className="text-muted-foreground hover:text-foreground transition-colors">Support</Link>
           </div>
 
           <div className="flex items-center gap-3">
@@ -121,16 +119,21 @@ export default function Landing() {
             <Sparkles className="h-4 w-4" />
             Africa's Premier AI Education Platform
           </div>
+
+          {/* Wiser Logo Hero */}
+          <div className="flex justify-center mb-8">
+            <img src={wiserLogo} alt="Wiser AI" className="h-24 w-24 md:h-32 md:w-32 rounded-2xl shadow-2xl" />
+          </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="gradient-text">Learn Smarter.</span>
+            <span className="gradient-text">WISER AI</span>
             <br />
-            <span className="text-foreground">Build Faster.</span>
+            <span className="text-foreground text-3xl md:text-4xl">Your Education & Automation Assistant</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
             WISER AI combines cutting-edge artificial intelligence with powerful automation 
-            to revolutionize how you learn, create, and build.
+            to revolutionize how you learn, create, and build across Africa and beyond.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -195,7 +198,7 @@ export default function Landing() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that's right for you. All plans include a 14-day free trial.
+              Choose the plan that's right for you. All paid plans include a 5-day free trial.
             </p>
           </div>
 
@@ -255,9 +258,7 @@ export default function Landing() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <Brain className="h-5 w-5 text-white" />
-                </div>
+                <img src={wiserLogo} alt="Wiser AI" className="h-8 w-8 rounded-lg" />
                 <span className="font-bold">WISER AI</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -270,14 +271,14 @@ export default function Landing() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link to="/chat" className="hover:text-foreground">Features</Link></li>
                 <li><Link to="/docs" className="hover:text-foreground">API Docs</Link></li>
-                <li><Link to="#pricing" className="hover:text-foreground">Pricing</Link></li>
+                <li><Link to="/pricing" className="hover:text-foreground">Pricing</Link></li>
               </ul>
             </div>
             
             <div>
               <h4 className="font-semibold mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground">Documentation</a></li>
+                <li><Link to="/docs" className="hover:text-foreground">Documentation</Link></li>
                 <li><a href="#" className="hover:text-foreground">Blog</a></li>
                 <li><a href="#" className="hover:text-foreground">Community</a></li>
               </ul>
@@ -286,15 +287,15 @@ export default function Landing() {
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground">Help Center</a></li>
-                <li><a href="#" className="hover:text-foreground">Contact Us</a></li>
+                <li><Link to="/support" className="hover:text-foreground">Help Center</Link></li>
+                <li><a href="mailto:wiserai@support.com" className="hover:text-foreground">Contact Us</a></li>
                 <li><a href="#" className="hover:text-foreground">Status</a></li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">© 2024 WISER AI. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© 2026 Wiser AI. All Rights Reserved.</p>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground">Privacy Policy</a>
               <a href="#" className="hover:text-foreground">Terms of Service</a>

@@ -24,6 +24,7 @@ const plans = [
     yearlyPrice: 200,
     priceId: STRIPE_TIERS.lite.price_id,
     productId: STRIPE_TIERS.lite.product_id,
+    trialDays: 5,
     features: [
       { icon: RefreshCw, text: '200 refresh credits everyday' },
       { icon: Sparkles, text: '2,800 credits per month' },
@@ -35,7 +36,7 @@ const plans = [
       { icon: Users, text: '14 concurrent tasks' },
       { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    cta: 'Upgrade',
+    cta: 'Start 5-Day Free Trial',
     popular: false
   },
   {
@@ -46,6 +47,7 @@ const plans = [
     yearlyPrice: 400,
     priceId: STRIPE_TIERS.pro.price_id,
     productId: STRIPE_TIERS.pro.product_id,
+    trialDays: 5,
     creditOptions: ['5,600 credits / month', '8,400 credits / month', '11,200 credits / month'],
     features: [
       { icon: RefreshCw, text: '200 refresh credits everyday' },
@@ -58,7 +60,7 @@ const plans = [
       { icon: Users, text: '14 concurrent tasks' },
       { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    cta: 'Upgrade',
+    cta: 'Start 5-Day Free Trial',
     popular: true
   },
   {
@@ -69,6 +71,7 @@ const plans = [
     yearlyPrice: 1996,
     priceId: STRIPE_TIERS.max.price_id,
     productId: STRIPE_TIERS.max.product_id,
+    trialDays: 5,
     features: [
       { icon: RefreshCw, text: '200 refresh credits everyday' },
       { icon: Sparkles, text: '28,000 credits per month' },
@@ -80,7 +83,7 @@ const plans = [
       { icon: Users, text: '14 concurrent tasks' },
       { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    cta: 'Upgrade',
+    cta: 'Start 5-Day Free Trial',
     popular: false
   }
 ];
@@ -96,7 +99,7 @@ const faqs = [
   },
   {
     q: 'Is there a free trial?',
-    a: 'Yes! All paid plans come with a 14-day free trial. No credit card required to start.'
+    a: 'Yes! All paid plans come with a 5-day free trial. No credit card required to start.'
   },
   {
     q: 'What payment methods do you accept?',

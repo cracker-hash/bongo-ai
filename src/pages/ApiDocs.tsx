@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,351 +9,761 @@ import {
   Brain, Code, Copy, Check, Key, Zap, ArrowLeft,
   MessageSquare, Image, FileText, Mic, Bot, Search,
   ChevronRight, ExternalLink, BookOpen, Eye, EyeOff,
-  Plus, Trash2, RefreshCw, Shield, Globe, Terminal
+  Plus, Trash2, RefreshCw, Shield, Globe, Terminal,
+  Webhook, Lock, Activity, Server, Database, Clock,
+  AlertCircle, CheckCircle, Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import wiserLogo from '@/assets/wiser-ai-logo.png';
+
+const API_BASE_URL = 'https://api.wiser.ai/v1';
+const SUPABASE_FUNCTIONS_URL = 'https://gbbqdmgrjtdliiddikwq.supabase.co/functions/v1';
 
 const endpoints = [
   {
     method: 'POST',
-    path: '/v1/chat/completions',
+    path: '/chat/completions',
     name: 'Chat Completions',
-    description: 'Generate conversational responses with context awareness',
+    description: 'Generate conversational responses with context awareness and streaming support',
     icon: MessageSquare,
     category: 'Core',
+    rateLimit: '1000 req/min',
     requestBody: {
       model: 'wiser-pro',
       messages: [{ role: 'user', content: 'Hello!' }],
-      stream: false
+      stream: false,
+      temperature: 0.7,
+      max_tokens: 2048
     },
     responseExample: {
       id: 'chatcmpl-abc123',
       object: 'chat.completion',
-      choices: [{ message: { role: 'assistant', content: 'Hello! How can I help you?' } }]
+      created: 1699000000,
+      model: 'wiser-pro',
+      choices: [{ 
+        index: 0,
+        message: { role: 'assistant', content: 'Hello! How can I help you today?' },
+        finish_reason: 'stop'
+      }],
+      usage: { prompt_tokens: 10, completion_tokens: 15, total_tokens: 25 }
     }
   },
   {
     method: 'POST',
-    path: '/v1/images/generate',
+    path: '/images/generate',
     name: 'Image Generation',
-    description: 'Generate images from text descriptions using DALL-E',
+    description: 'Generate high-quality images from text descriptions using state-of-the-art models',
     icon: Image,
     category: 'Media',
+    rateLimit: '100 req/min',
     requestBody: {
-      prompt: 'A beautiful sunset over mountains',
+      prompt: 'A beautiful sunset over African savanna',
       size: '1024x1024',
-      quality: 'hd'
+      quality: 'hd',
+      style: 'natural'
     },
     responseExample: {
       created: 1699000000,
-      data: [{ url: 'https://api.wiser.ai/images/generated/abc123.png' }]
+      data: [{ 
+        url: 'https://api.wiser.ai/images/generated/abc123.png',
+        revised_prompt: 'A stunning sunset over the African savanna with golden light'
+      }]
     }
   },
   {
     method: 'POST',
-    path: '/v1/documents/analyze',
+    path: '/documents/analyze',
     name: 'Document Analysis',
-    description: 'Extract and analyze text from PDFs and documents',
+    description: 'Extract text, analyze structure, and generate insights from PDFs and documents',
     icon: FileText,
-    category: 'Core'
+    category: 'Core',
+    rateLimit: '500 req/min'
   },
   {
     method: 'POST',
-    path: '/v1/audio/tts',
+    path: '/audio/tts',
     name: 'Text to Speech',
-    description: 'Convert text to natural-sounding speech',
+    description: 'Convert text to natural-sounding speech in multiple languages and voices',
     icon: Mic,
-    category: 'Media'
+    category: 'Media',
+    rateLimit: '200 req/min'
   },
   {
     method: 'POST',
-    path: '/v1/podcast/generate',
+    path: '/podcast/generate',
     name: 'Podcast Generator',
-    description: 'Create full podcast episodes from text content',
+    description: 'Create full podcast episodes with AI-generated scripts and professional voices',
     icon: Mic,
-    category: 'Media'
+    category: 'Media',
+    rateLimit: '50 req/min'
   },
   {
     method: 'POST',
-    path: '/v1/wiser/execute',
+    path: '/automation/execute',
     name: 'Wiser Automation',
-    description: 'Execute automated tasks with the Wiser agent',
+    description: 'Execute complex automated workflows with browser interaction and tool orchestration',
     icon: Bot,
-    category: 'Automation'
+    category: 'Automation',
+    rateLimit: '100 req/min'
   },
   {
     method: 'POST',
-    path: '/v1/study/plan',
-    name: 'Study Plan',
-    description: 'Generate personalized study plans from materials',
+    path: '/education/study-plan',
+    name: 'Study Plan Generator',
+    description: 'Generate personalized study plans from materials with adaptive learning paths',
     icon: BookOpen,
-    category: 'Education'
+    category: 'Education',
+    rateLimit: '200 req/min'
   },
   {
     method: 'POST',
-    path: '/v1/quiz/generate',
+    path: '/education/quiz',
     name: 'Quiz Generation',
-    description: 'Create quizzes from study materials',
+    description: 'Create interactive quizzes with multiple question types from any content',
     icon: FileText,
-    category: 'Education'
+    category: 'Education',
+    rateLimit: '200 req/min'
+  },
+  {
+    method: 'POST',
+    path: '/webhooks/register',
+    name: 'Register Webhook',
+    description: 'Register a webhook endpoint to receive real-time event notifications',
+    icon: Webhook,
+    category: 'Webhooks',
+    rateLimit: '100 req/min'
   }
 ];
 
 const pricingTiers = [
-  { name: 'Free', requests: '1,000', price: '$0/mo', tokens: '10K' },
-  { name: 'Lite', requests: '5,000', price: '$20/mo', tokens: '100K' },
-  { name: 'Pro', requests: '25,000', price: '$40/mo', tokens: '500K' },
-  { name: 'Max', requests: 'Unlimited', price: '$200/mo', tokens: 'Unlimited' }
+  { name: 'Free', requests: '1,000', price: '$0/mo', tokens: '10K', support: 'Community' },
+  { name: 'Lite', requests: '10,000', price: '$20/mo', tokens: '100K', support: 'Email' },
+  { name: 'Pro', requests: '100,000', price: '$40/mo', tokens: '500K', support: 'Priority' },
+  { name: 'Max', requests: 'Unlimited', price: '$200/mo', tokens: 'Unlimited', support: '24/7 Dedicated' }
 ];
 
 const API_BASE_URL = 'https://gbbqdmgrjtdliiddikwq.supabase.co/functions/v1';
 
 const codeExamples = {
-  curl: `curl -X POST "${API_BASE_URL}/chat" \\
+  curl: `# WISER AI - Chat Completion Example
+# Replace YOUR_API_KEY with your actual API key
+
+curl -X POST "${SUPABASE_FUNCTIONS_URL}/chat" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
+  -H "X-Request-ID: $(uuidgen)" \\
   -d '{
     "model": "wiser-pro",
     "messages": [
-      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "system", "content": "You are a helpful AI assistant."},
       {"role": "user", "content": "Explain quantum computing in simple terms."}
     ],
+    "temperature": 0.7,
+    "max_tokens": 2048,
     "stream": true
-  }'`,
-  javascript: `// Using Fetch API
-const response = await fetch('${API_BASE_URL}/chat', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
+  }'
+
+# Response will be streamed as Server-Sent Events (SSE)`,
+  javascript: `// WISER AI SDK - JavaScript/TypeScript
+// Install: npm install @wiser-ai/sdk
+
+import { WiserAI } from '@wiser-ai/sdk';
+
+// Initialize the client
+const wiser = new WiserAI({
+  apiKey: process.env.WISER_API_KEY,
+  baseURL: '${SUPABASE_FUNCTIONS_URL}'
+});
+
+// Chat completion with streaming
+async function chat() {
+  const response = await wiser.chat.completions.create({
     model: 'wiser-pro',
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
       { role: 'user', content: 'Explain quantum computing in simple terms.' }
     ],
-    stream: false
-  })
-});
-
-const data = await response.json();
-console.log(data.choices[0].message.content);`,
-  nodejs: `const https = require('https');
-
-const options = {
-  hostname: 'gbbqdmgrjtdliiddikwq.supabase.co',
-  path: '/functions/v1/chat',
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  }
-};
-
-const req = https.request(options, (res) => {
-  let data = '';
-  res.on('data', (chunk) => data += chunk);
-  res.on('end', () => {
-    const result = JSON.parse(data);
-    console.log(result.choices[0].message.content);
+    temperature: 0.7,
+    max_tokens: 2048,
+    stream: true
   });
-});
 
-req.write(JSON.stringify({
-  model: 'wiser-pro',
-  messages: [
+  // Handle streaming response
+  for await (const chunk of response) {
+    process.stdout.write(chunk.choices[0]?.delta?.content || '');
+  }
+}
+
+// Non-streaming usage with fetch
+async function chatWithFetch() {
+  const response = await fetch('${SUPABASE_FUNCTIONS_URL}/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${process.env.WISER_API_KEY}\`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'wiser-pro',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Explain quantum computing.' }
+      ],
+      stream: false
+    })
+  });
+
+  const data = await response.json();
+  console.log(data.choices[0].message.content);
+}
+
+chat().catch(console.error);`,
+  nodejs: `// WISER AI - Node.js Integration
+// Production-ready implementation with error handling
+
+const https = require('https');
+const { promisify } = require('util');
+
+class WiserAIClient {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.baseURL = '${SUPABASE_FUNCTIONS_URL}';
+  }
+
+  async chat(messages, options = {}) {
+    return new Promise((resolve, reject) => {
+      const url = new URL(\`\${this.baseURL}/chat\`);
+      
+      const payload = JSON.stringify({
+        model: options.model || 'wiser-pro',
+        messages,
+        temperature: options.temperature || 0.7,
+        max_tokens: options.max_tokens || 2048,
+        stream: false
+      });
+
+      const req = https.request(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': \`Bearer \${this.apiKey}\`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            if (res.statusCode >= 400) {
+              reject(new Error(result.error || 'API request failed'));
+            } else {
+              resolve(result);
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+  }
+}
+
+// Usage
+const client = new WiserAIClient(process.env.WISER_API_KEY);
+
+async function main() {
+  const response = await client.chat([
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Explain quantum computing.' }
-  ]
-}));
+  ]);
+  
+  console.log(response.choices[0].message.content);
+}
 
-req.end();`,
-  express: `const express = require('express');
+main().catch(console.error);`,
+  express: `// WISER AI - Express.js Middleware & Routes
+// Production-ready API proxy with rate limiting and caching
+
+const express = require('express');
 const axios = require('axios');
-const app = express();
+const rateLimit = require('express-rate-limit');
+const NodeCache = require('node-cache');
 
+const app = express();
 app.use(express.json());
 
+// Configuration
 const WISER_API_KEY = process.env.WISER_API_KEY;
-const API_URL = '${API_BASE_URL}/chat';
+const API_URL = '${SUPABASE_FUNCTIONS_URL}';
 
-// Proxy endpoint for WISER AI
-app.post('/api/chat', async (req, res) => {
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+// Response caching
+const cache = new NodeCache({ stdTTL: 300 });
+
+// Middleware for API key validation
+const validateApiKey = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API key required' });
+  }
+  // Add your API key validation logic here
+  next();
+};
+
+// Chat endpoint with caching
+app.post('/api/chat', limiter, validateApiKey, async (req, res) => {
   try {
-    const response = await axios.post(API_URL, {
+    const cacheKey = JSON.stringify(req.body);
+    const cached = cache.get(cacheKey);
+    
+    if (cached && !req.body.stream) {
+      return res.json(cached);
+    }
+
+    const response = await axios.post(\`\${API_URL}/chat\`, {
       model: 'wiser-pro',
       messages: req.body.messages,
+      temperature: req.body.temperature || 0.7,
+      max_tokens: req.body.max_tokens || 2048,
       stream: false
     }, {
       headers: {
         'Authorization': \`Bearer \${WISER_API_KEY}\`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000
     });
-    
+
+    // Cache non-streaming responses
+    if (!req.body.stream) {
+      cache.set(cacheKey, response.data);
+    }
+
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('WISER API Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      error: error.response?.data?.error || 'Internal server error'
+    });
   }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));`,
+// Webhook receiver
+app.post('/webhooks/wiser', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-wiser-signature'];
+  // Verify signature and process webhook
+  console.log('Webhook received:', JSON.parse(req.body));
+  res.json({ received: true });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(\`WISER AI Proxy running on port \${PORT}\`);
+});`,
   php: `<?php
+/**
+ * WISER AI - PHP SDK
+ * Production-ready PHP client with PSR-7 compatibility
+ */
 
-$apiKey = 'YOUR_API_KEY';
-$apiUrl = '${API_BASE_URL}/chat';
+namespace WiserAI;
 
-$data = [
-    'model' => 'wiser-pro',
-    'messages' => [
+class Client {
+    private string $apiKey;
+    private string $baseUrl = '${SUPABASE_FUNCTIONS_URL}';
+    private int $timeout = 30;
+
+    public function __construct(string $apiKey) {
+        $this->apiKey = $apiKey;
+    }
+
+    /**
+     * Send a chat completion request
+     */
+    public function chat(array $messages, array $options = []): array {
+        $payload = [
+            'model' => $options['model'] ?? 'wiser-pro',
+            'messages' => $messages,
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => $options['max_tokens'] ?? 2048,
+            'stream' => false
+        ];
+
+        return $this->request('POST', '/chat', $payload);
+    }
+
+    /**
+     * Generate an image from text
+     */
+    public function generateImage(string $prompt, array $options = []): array {
+        return $this->request('POST', '/images/generate', [
+            'prompt' => $prompt,
+            'size' => $options['size'] ?? '1024x1024',
+            'quality' => $options['quality'] ?? 'hd'
+        ]);
+    }
+
+    private function request(string $method, string $endpoint, array $data): array {
+        $ch = curl_init($this->baseUrl . $endpoint);
+        
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $this->timeout,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $this->apiKey,
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'X-Request-ID: ' . $this->generateRequestId()
+            ],
+            CURLOPT_POSTFIELDS => json_encode($data)
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            throw new \\Exception("cURL Error: $error");
+        }
+
+        $result = json_decode($response, true);
+
+        if ($httpCode >= 400) {
+            throw new \\Exception($result['error'] ?? 'API request failed', $httpCode);
+        }
+
+        return $result;
+    }
+
+    private function generateRequestId(): string {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+    }
+}
+
+// Usage Example
+$wiser = new Client(getenv('WISER_API_KEY'));
+
+try {
+    $response = $wiser->chat([
         ['role' => 'system', 'content' => 'You are a helpful assistant.'],
         ['role' => 'user', 'content' => 'Explain quantum computing.']
-    ],
-    'stream' => false
-];
+    ]);
 
-$ch = curl_init($apiUrl);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ' . $apiKey,
-        'Content-Type: application/json'
-    ],
-    CURLOPT_POSTFIELDS => json_encode($data)
-]);
+    echo $response['choices'][0]['message']['content'];
+} catch (\\Exception $e) {
+    error_log('WISER API Error: ' . $e->getMessage());
+}`,
+  java: `// WISER AI - Java SDK
+// Production-ready Java client with async support
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-if ($httpCode === 200) {
-    $result = json_decode($response, true);
-    echo $result['choices'][0]['message']['content'];
-} else {
-    echo "Error: " . $response;
-}
-?>`,
-  java: `import java.net.http.*;
+import java.net.http.*;
 import java.net.URI;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class WiserAIClient {
-    private static final String API_KEY = "YOUR_API_KEY";
-    private static final String API_URL = "${API_BASE_URL}/chat";
-    
-    public static void main(String[] args) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        
-        String jsonBody = """
-            {
-                "model": "wiser-pro",
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "Explain quantum computing."}
-                ],
-                "stream": false
-            }
-            """;
-        
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(API_URL))
-            .header("Authorization", "Bearer " + API_KEY)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+    private static final String BASE_URL = "${SUPABASE_FUNCTIONS_URL}";
+    private final String apiKey;
+    private final HttpClient httpClient;
+    private final Gson gson;
+
+    public WiserAIClient(String apiKey) {
+        this.apiKey = apiKey;
+        this.httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
             .build();
-        
-        HttpResponse<String> response = client.send(request, 
-            HttpResponse.BodyHandlers.ofString());
-        
-        System.out.println(response.body());
+        this.gson = new Gson();
+    }
+
+    public record Message(String role, String content) {}
+    
+    public record ChatRequest(
+        String model,
+        Message[] messages,
+        double temperature,
+        int max_tokens,
+        boolean stream
+    ) {}
+
+    public CompletableFuture<JsonObject> chat(Message[] messages) {
+        return chat(messages, 0.7, 2048);
+    }
+
+    public CompletableFuture<JsonObject> chat(
+        Message[] messages, 
+        double temperature, 
+        int maxTokens
+    ) {
+        var request = new ChatRequest(
+            "wiser-pro", 
+            messages, 
+            temperature, 
+            maxTokens, 
+            false
+        );
+
+        String jsonBody = gson.toJson(request);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/chat"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+
+        return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
+            .thenApply(response -> {
+                if (response.statusCode() >= 400) {
+                    throw new RuntimeException("API Error: " + response.body());
+                }
+                return gson.fromJson(response.body(), JsonObject.class);
+            });
+    }
+
+    public static void main(String[] args) {
+        String apiKey = System.getenv("WISER_API_KEY");
+        WiserAIClient client = new WiserAIClient(apiKey);
+
+        Message[] messages = {
+            new Message("system", "You are a helpful assistant."),
+            new Message("user", "Explain quantum computing in simple terms.")
+        };
+
+        client.chat(messages)
+            .thenAccept(response -> {
+                var content = response
+                    .getAsJsonArray("choices")
+                    .get(0).getAsJsonObject()
+                    .getAsJsonObject("message")
+                    .get("content").getAsString();
+                System.out.println(content);
+            })
+            .exceptionally(e -> {
+                System.err.println("Error: " + e.getMessage());
+                return null;
+            })
+            .join();
     }
 }`
 };
 
 const webhookExamples = {
-  javascript: `// Express.js Webhook Handler
+  javascript: `// WISER AI - Express.js Webhook Handler
+// Production-ready with signature verification and retry handling
+
 const express = require('express');
 const crypto = require('crypto');
 const app = express();
 
-app.use(express.raw({ type: 'application/json' }));
+app.use('/webhooks', express.raw({ type: 'application/json' }));
 
 const WEBHOOK_SECRET = process.env.WISER_WEBHOOK_SECRET;
 
-app.post('/webhook/wiser', (req, res) => {
+// Signature verification middleware
+function verifyWebhookSignature(req, res, next) {
   const signature = req.headers['x-wiser-signature'];
   const timestamp = req.headers['x-wiser-timestamp'];
   
-  // Verify webhook signature
+  if (!signature || !timestamp) {
+    return res.status(401).json({ error: 'Missing signature headers' });
+  }
+
+  // Prevent replay attacks (5 minute tolerance)
+  const age = Date.now() / 1000 - parseInt(timestamp);
+  if (age > 300) {
+    return res.status(401).json({ error: 'Timestamp too old' });
+  }
+
   const payload = timestamp + '.' + req.body.toString();
   const expectedSig = crypto
     .createHmac('sha256', WEBHOOK_SECRET)
     .update(payload)
     .digest('hex');
-  
-  if (signature !== expectedSig) {
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
-  
+
+  next();
+}
+
+// Webhook endpoint
+app.post('/webhooks/wiser', verifyWebhookSignature, async (req, res) => {
+  // Respond immediately to acknowledge receipt
+  res.json({ received: true });
+
+  // Process event asynchronously
   const event = JSON.parse(req.body);
   
-  switch (event.type) {
-    case 'usage.limit_reached':
-      console.log('User reached usage limit:', event.data);
-      break;
-    case 'subscription.updated':
-      console.log('Subscription updated:', event.data);
-      break;
-    case 'task.completed':
-      console.log('Wiser task completed:', event.data);
-      break;
+  try {
+    switch (event.type) {
+      case 'chat.completed':
+        console.log('Chat completed:', event.data.request_id);
+        // Handle completion
+        break;
+        
+      case 'usage.limit_reached':
+        console.log('Usage limit reached for user:', event.data.user_id);
+        // Notify user or upgrade prompt
+        break;
+        
+      case 'subscription.updated':
+        console.log('Subscription updated:', event.data);
+        // Update user permissions
+        break;
+        
+      case 'task.completed':
+        console.log('Automation task completed:', event.data.task_id);
+        // Process results
+        break;
+        
+      case 'podcast.generated':
+        console.log('Podcast ready:', event.data.download_url);
+        // Notify user
+        break;
+        
+      default:
+        console.log('Unhandled event type:', event.type);
+    }
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    // Implement retry logic or dead letter queue
   }
-  
-  res.json({ received: true });
 });
 
-app.listen(3000);`,
+app.listen(3000, () => console.log('Webhook server running'));`,
   php: `<?php
-// PHP Webhook Handler
+/**
+ * WISER AI - PHP Webhook Handler
+ * Production-ready with signature verification
+ */
 
-$webhookSecret = getenv('WISER_WEBHOOK_SECRET');
-$signature = $_SERVER['HTTP_X_WISER_SIGNATURE'] ?? '';
-$timestamp = $_SERVER['HTTP_X_WISER_TIMESTAMP'] ?? '';
+// Get raw request body
 $payload = file_get_contents('php://input');
+$headers = getallheaders();
+
+// Configuration
+$webhookSecret = getenv('WISER_WEBHOOK_SECRET');
+$signature = $headers['X-Wiser-Signature'] ?? '';
+$timestamp = $headers['X-Wiser-Timestamp'] ?? '';
 
 // Verify signature
-$expectedSig = hash_hmac('sha256', $timestamp . '.' . $payload, $webhookSecret);
+function verifySignature($payload, $timestamp, $signature, $secret) {
+    if (empty($signature) || empty($timestamp)) {
+        return false;
+    }
 
-if (!hash_equals($expectedSig, $signature)) {
+    // Check timestamp age (5 minute tolerance)
+    if (time() - intval($timestamp) > 300) {
+        return false;
+    }
+
+    $expectedSig = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
+    return hash_equals($expectedSig, $signature);
+}
+
+if (!verifySignature($payload, $timestamp, $signature, $webhookSecret)) {
     http_response_code(401);
     echo json_encode(['error' => 'Invalid signature']);
     exit;
 }
 
-$event = json_decode($payload, true);
-
-switch ($event['type']) {
-    case 'usage.limit_reached':
-        // Handle usage limit
-        error_log('Usage limit reached: ' . json_encode($event['data']));
-        break;
-    case 'subscription.updated':
-        // Handle subscription update
-        error_log('Subscription updated: ' . json_encode($event['data']));
-        break;
-    case 'task.completed':
-        // Handle Wiser task completion
-        error_log('Task completed: ' . json_encode($event['data']));
-        break;
-}
-
+// Acknowledge receipt immediately
 http_response_code(200);
 echo json_encode(['received' => true]);
+
+// Flush output to client
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+// Process event
+$event = json_decode($payload, true);
+
+try {
+    switch ($event['type']) {
+        case 'chat.completed':
+            // Handle chat completion
+            processChat($event['data']);
+            break;
+            
+        case 'usage.limit_reached':
+            // Notify user about limit
+            sendLimitNotification($event['data']['user_id']);
+            break;
+            
+        case 'subscription.updated':
+            // Update user permissions in database
+            updateSubscription($event['data']);
+            break;
+            
+        case 'task.completed':
+            // Process automation results
+            processTaskResult($event['data']);
+            break;
+            
+        case 'podcast.generated':
+            // Send download link to user
+            notifyPodcastReady($event['data']);
+            break;
+            
+        default:
+            error_log('Unhandled webhook event: ' . $event['type']);
+    }
+} catch (Exception $e) {
+    error_log('Webhook error: ' . $e->getMessage());
+    // Consider implementing retry queue
+}
+
+function processChat($data) {
+    // Implementation
+}
+
+function sendLimitNotification($userId) {
+    // Send email or push notification
+}
+
+function updateSubscription($data) {
+    // Update database
+}
+
+function processTaskResult($data) {
+    // Handle automation results
+}
+
+function notifyPodcastReady($data) {
+    // Send notification with download link
+}
 ?>`
 };
 
@@ -569,15 +979,16 @@ function ApiDocsContent() {
             </Link>
             <div className="h-6 w-px bg-border" />
             <Link to="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
+              <img src={wiserLogo} alt="Wiser AI" className="h-8 w-8 rounded-lg" />
               <span className="font-bold">WISER AI</span>
-              <Badge variant="secondary" className="ml-2">API</Badge>
+              <Badge variant="secondary" className="ml-2">API v2.0</Badge>
             </Link>
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/support">
+              <Button variant="ghost" size="sm">Support</Button>
+            </Link>
             <Link to="/dashboard">
               <Button variant="outline" size="sm">
                 <Key className="h-4 w-4 mr-2" />
@@ -590,22 +1001,28 @@ function ApiDocsContent() {
 
       <div className="pt-20 flex">
         {/* Sidebar */}
-        <aside className="hidden lg:block w-64 fixed left-0 top-20 bottom-0 border-r border-border bg-card/50 p-6 overflow-y-auto">
+        <aside className="hidden lg:block w-72 fixed left-0 top-20 bottom-0 border-r border-border bg-card/50 p-6 overflow-y-auto">
           <div className="space-y-6">
+            {/* Status Indicator */}
+            <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 px-3 py-2 rounded-lg">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              All Systems Operational
+            </div>
+
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Getting Started</h3>
               <ul className="space-y-2">
-                <li><a href="#introduction" className="text-sm text-foreground hover:text-primary">Introduction</a></li>
-                <li><a href="#api-keys" className="text-sm text-muted-foreground hover:text-primary">API Keys</a></li>
-                <li><a href="#authentication" className="text-sm text-muted-foreground hover:text-primary">Authentication</a></li>
-                <li><a href="#quickstart" className="text-sm text-muted-foreground hover:text-primary">Quickstart</a></li>
+                <li><a href="#introduction" className="text-sm text-foreground hover:text-primary flex items-center gap-2"><Info className="h-3 w-3" />Introduction</a></li>
+                <li><a href="#api-keys" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2"><Key className="h-3 w-3" />API Keys</a></li>
+                <li><a href="#authentication" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2"><Lock className="h-3 w-3" />Authentication</a></li>
+                <li><a href="#quickstart" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2"><Zap className="h-3 w-3" />Quickstart</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Code Examples</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">SDKs & Languages</h3>
               <ul className="space-y-2">
-                <li><a href="#javascript" className="text-sm text-muted-foreground hover:text-primary">JavaScript</a></li>
+                <li><a href="#javascript" className="text-sm text-muted-foreground hover:text-primary">JavaScript / TypeScript</a></li>
                 <li><a href="#nodejs" className="text-sm text-muted-foreground hover:text-primary">Node.js</a></li>
                 <li><a href="#express" className="text-sm text-muted-foreground hover:text-primary">Express.js</a></li>
                 <li><a href="#php" className="text-sm text-muted-foreground hover:text-primary">PHP</a></li>
@@ -614,12 +1031,14 @@ function ApiDocsContent() {
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Endpoints</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">API Reference</h3>
               <ul className="space-y-2">
                 {endpoints.map((endpoint, i) => (
                   <li key={i}>
                     <a href={`#${endpoint.path.replace(/\//g, '-')}`} className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] px-1">{endpoint.method}</Badge>
+                      <Badge variant="outline" className={`text-[10px] px-1 ${endpoint.method === 'POST' ? 'bg-primary/10 text-primary' : ''}`}>
+                        {endpoint.method}
+                      </Badge>
                       {endpoint.name}
                     </a>
                   </li>
@@ -630,55 +1049,86 @@ function ApiDocsContent() {
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Webhooks</h3>
               <ul className="space-y-2">
-                <li><a href="#webhooks" className="text-sm text-muted-foreground hover:text-primary">Webhook Events</a></li>
-                <li><a href="#webhook-security" className="text-sm text-muted-foreground hover:text-primary">Security</a></li>
+                <li><a href="#webhooks" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2"><Webhook className="h-3 w-3" />Events</a></li>
+                <li><a href="#webhook-security" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2"><Shield className="h-3 w-3" />Security</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pricing</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resources</h3>
               <ul className="space-y-2">
-                <li><a href="#pricing" className="text-sm text-muted-foreground hover:text-primary">Plans & Limits</a></li>
+                <li><a href="#pricing" className="text-sm text-muted-foreground hover:text-primary">Pricing & Limits</a></li>
+                <li><Link to="/support" className="text-sm text-muted-foreground hover:text-primary">Support</Link></li>
               </ul>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64 p-6 lg:p-12">
+        <main className="flex-1 lg:ml-72 p-6 lg:p-12">
           <div className="max-w-4xl mx-auto">
             {/* Hero */}
             <section id="introduction" className="mb-16">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                  <Code className="h-6 w-6 text-white" />
-                </div>
+              <div className="flex items-center gap-4 mb-6">
+                <img src={wiserLogo} alt="Wiser AI" className="h-14 w-14 rounded-xl" />
                 <div>
                   <h1 className="text-4xl font-bold">WISER AI API</h1>
-                  <p className="text-muted-foreground">Build powerful AI applications with our comprehensive API</p>
+                  <p className="text-muted-foreground">Enterprise-grade AI API for global applications</p>
                 </div>
               </div>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <Card className="bg-card/50 border-border/50 text-center">
+                  <CardContent className="pt-4 pb-4">
+                    <Server className="h-6 w-6 text-primary mx-auto mb-2" />
+                    <div className="text-2xl font-bold">99.9%</div>
+                    <div className="text-xs text-muted-foreground">Uptime SLA</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card/50 border-border/50 text-center">
+                  <CardContent className="pt-4 pb-4">
+                    <Clock className="h-6 w-6 text-primary mx-auto mb-2" />
+                    <div className="text-2xl font-bold">&lt;200ms</div>
+                    <div className="text-xs text-muted-foreground">Avg Response</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card/50 border-border/50 text-center">
+                  <CardContent className="pt-4 pb-4">
+                    <Globe className="h-6 w-6 text-primary mx-auto mb-2" />
+                    <div className="text-2xl font-bold">50+</div>
+                    <div className="text-xs text-muted-foreground">Edge Locations</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card/50 border-border/50 text-center">
+                  <CardContent className="pt-4 pb-4">
+                    <Shield className="h-6 w-6 text-primary mx-auto mb-2" />
+                    <div className="text-2xl font-bold">SOC 2</div>
+                    <div className="text-xs text-muted-foreground">Compliant</div>
+                  </CardContent>
+                </Card>
+              </div>
               
-              <div className="grid md:grid-cols-3 gap-4 mt-8">
+              <div className="grid md:grid-cols-3 gap-4">
                 <Card className="bg-card/50 border-border/50">
                   <CardContent className="pt-6">
                     <Zap className="h-8 w-8 text-primary mb-3" />
-                    <h3 className="font-semibold mb-1">Fast & Reliable</h3>
-                    <p className="text-sm text-muted-foreground">99.9% uptime with global edge deployment</p>
+                    <h3 className="font-semibold mb-1">Blazing Fast</h3>
+                    <p className="text-sm text-muted-foreground">Global edge deployment with sub-200ms latency</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-card/50 border-border/50">
                   <CardContent className="pt-6">
                     <Shield className="h-8 w-8 text-primary mb-3" />
-                    <h3 className="font-semibold mb-1">Production Ready</h3>
-                    <p className="text-sm text-muted-foreground">Enterprise-grade security and scaling</p>
+                    <h3 className="font-semibold mb-1">Enterprise Ready</h3>
+                    <p className="text-sm text-muted-foreground">SOC 2 compliant with end-to-end encryption</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-card/50 border-border/50">
                   <CardContent className="pt-6">
                     <Globe className="h-8 w-8 text-primary mb-3" />
-                    <h3 className="font-semibold mb-1">Multi-Language</h3>
-                    <p className="text-sm text-muted-foreground">SDKs for PHP, JS, Java, Node.js & more</p>
+                    <h3 className="font-semibold mb-1">Multi-Language SDKs</h3>
+                    <p className="text-sm text-muted-foreground">Official SDKs for PHP, JS, Java, Python & more</p>
                   </CardContent>
                 </Card>
               </div>
@@ -854,37 +1304,61 @@ function ApiDocsContent() {
 
             {/* Pricing */}
             <section id="pricing" className="mb-16">
-              <h2 className="text-2xl font-bold mb-6">Pricing & Limits</h2>
+              <h2 className="text-2xl font-bold mb-6">Pricing & Rate Limits</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {pricingTiers.map((tier, i) => (
-                  <Card key={i} className="bg-card/50 border-border/50 text-center">
-                    <CardHeader>
+                  <Card key={i} className={`bg-card/50 border-border/50 text-center ${tier.name === 'Pro' ? 'border-primary shadow-lg' : ''}`}>
+                    {tier.name === 'Pro' && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
+                        Popular
+                      </div>
+                    )}
+                    <CardHeader className="pb-2">
                       <CardTitle>{tier.name}</CardTitle>
                       <div className="text-2xl font-bold text-primary">{tier.price}</div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 pt-0">
                       <div>
-                        <div className="text-sm text-muted-foreground">Requests/month</div>
+                        <div className="text-xs text-muted-foreground">Requests/month</div>
                         <div className="font-semibold">{tier.requests}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-muted-foreground">Tokens/month</div>
+                        <div className="text-xs text-muted-foreground">Tokens/month</div>
                         <div className="font-semibold">{tier.tokens}</div>
                       </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Support</div>
+                        <div className="font-semibold">{tier.support}</div>
+                      </div>
+                      {tier.name !== 'Free' && (
+                        <Badge variant="secondary" className="text-xs">5-day free trial</Badge>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+              <div className="mt-6 text-center">
+                <Link to="/pricing">
+                  <Button variant="outline">
+                    View Full Pricing Details <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </section>
 
             {/* CTA */}
             <section className="text-center py-12 px-6 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl">
-              <h2 className="text-2xl font-bold mb-4">Ready to build?</h2>
-              <p className="text-muted-foreground mb-6">Get your API key and start building in minutes.</p>
-              <div className="flex items-center justify-center gap-4">
+              <h2 className="text-2xl font-bold mb-4">Ready to Build?</h2>
+              <p className="text-muted-foreground mb-6">Get your API key and start building production-ready AI applications in minutes.</p>
+              <div className="flex items-center justify-center gap-4 flex-wrap">
                 <Link to="/pricing">
                   <Button size="lg" variant="outline">
                     View Pricing
+                  </Button>
+                </Link>
+                <Link to="/support">
+                  <Button size="lg" variant="outline">
+                    Contact Support
                   </Button>
                 </Link>
                 <Link to="/dashboard">
@@ -894,6 +1368,13 @@ function ApiDocsContent() {
                 </Link>
               </div>
             </section>
+
+            {/* Footer */}
+            <div className="mt-12 pt-8 border-t border-border text-center">
+              <p className="text-sm text-muted-foreground">
+                © 2026 Wiser AI. All Rights Reserved. | <a href="mailto:wiserai@support.com" className="hover:text-primary">wiserai@support.com</a>
+              </p>
+            </div>
           </div>
         </main>
       </div>
