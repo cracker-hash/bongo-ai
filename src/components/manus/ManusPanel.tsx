@@ -114,11 +114,11 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle>Wiser Automation</CardTitle>
+              <CardTitle>Wiser AI Automation</CardTitle>
               <CardDescription>AI-powered task automation</CardDescription>
             </div>
           </div>
