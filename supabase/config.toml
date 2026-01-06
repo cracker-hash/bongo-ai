@@ -49,3 +49,6 @@ verify_jwt = false
 
 [functions.check-usage-limits]
 verify_jwt = false
+
+[functions.google-oauth]
+verify_jwt = false

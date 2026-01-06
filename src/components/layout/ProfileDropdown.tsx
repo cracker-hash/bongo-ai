@@ -129,7 +129,7 @@ export function ProfileDropdown() {
 
         {/* Connected Accounts */}
         <DropdownMenuItem 
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/connected-accounts')}
           className="gap-3 py-2.5 cursor-pointer"
         >
           <LinkIcon className="h-4 w-4" />
