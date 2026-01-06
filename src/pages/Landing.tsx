@@ -17,7 +17,7 @@ const features = [
   },
   {
     icon: Bot,
-    title: 'Manus Automation',
+    title: 'Wiser Automation',
     description: 'Full automation with agent loops, browser interaction, and custom workflows.'
   },
   {
@@ -66,7 +66,7 @@ const pricingPlans = [
     price: '$40',
     period: '/month',
     description: 'For power users',
-    features: ['100,000 API requests/month', 'Unlimited podcasts', 'Manus automation', 'API access', 'Advanced analytics', 'Custom integrations'],
+    features: ['100,000 API requests/month', 'Unlimited podcasts', 'Wiser automation', 'API access', 'Advanced analytics', 'Custom integrations'],
     cta: 'Start Free Trial',
     popular: true
   },

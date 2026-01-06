@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Manus AI API configuration
-const MANUS_API_KEY = Deno.env.get("MANUS_API_KEY");
-const MANUS_API_URL = "https://api.manus.ai/v1";
+// Wiser AI API configuration
+const WISER_API_KEY = Deno.env.get("MANUS_API_KEY"); // Using existing secret
+const WISER_API_URL = "https://api.manus.ai/v1"; // Backend endpoint unchanged
 
 interface ManusTask {
   id: string;
@@ -64,7 +64,7 @@ serve(async (req) => {
         throw new Error(`Unknown action: ${action}`);
     }
   } catch (error) {
-    console.error("Manus automation error:", error);
+    console.error("Wiser automation error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -1,4 +1,4 @@
-// Manus AI Automation Library
+// Wiser AI Automation Library
 // Agent loop: Analyze → Think → Select → Execute → Observe
 
 export interface ManusTask {
