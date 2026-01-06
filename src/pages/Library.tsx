@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { 
   FileText, 
   Image as ImageIcon, 
@@ -46,7 +47,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   template: <Grid className="h-5 w-5 text-purple-500" />,
 };
 
-export default function Library() {
+function LibraryContent() {
   const { isAuthenticated, setShowAuthModal } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,5 +231,14 @@ export default function Library() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Library() {
+  return (
+    <AuthProvider>
+      <LibraryContent />
+      <AuthModal />
+    </AuthProvider>
   );
 }
