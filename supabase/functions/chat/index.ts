@@ -195,42 +195,68 @@ Answer in the SAME LANGUAGE the user uses.`
 
     console.log(`Processing chat request in ${mode} mode with ${messages.length} messages${isVoice ? ' (voice mode)' : ''}`);
 
-    // Using OpenAI GPT-4o-mini for chat
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
+    // Using OpenAI GPT-4o-mini for chat with retry logic
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...messages,
+            ],
+            stream: true,
+          }),
+        });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.error("Rate limit exceeded");
-        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
-          status: 429,
+        if (response.ok) {
+          return new Response(response.body, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+          });
+        }
+
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('retry-after');
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+          console.log(`Rate limited, attempt ${attempt + 1}/${maxRetries}, waiting ${waitTime}ms`);
+          
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+          
+          console.error("Rate limit exceeded after retries");
+          return new Response(JSON.stringify({ error: "Service is busy. Please wait a moment and try again." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const errorText = await response.text();
+        console.error("OpenAI error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: "AI service error" }), {
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      } catch (fetchError) {
+        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+        console.error(`Attempt ${attempt + 1} failed:`, lastError.message);
+        
+        if (attempt < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
       }
-      const errorText = await response.text();
-      console.error("OpenAI error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
-
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    
+    throw lastError || new Error("Failed after retries");
   } catch (error) {
     console.error("Chat function error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
