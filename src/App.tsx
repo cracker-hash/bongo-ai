@@ -12,6 +12,7 @@ import Landing from "./pages/Landing";
 import ApiDocs from "./pages/ApiDocs";
 import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
+import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import { OfflineIndicator, OnlineIndicator } from "./components/OfflineIndicator";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -41,6 +42,7 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/install" element={<InstallGuide />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/support" element={<Support />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

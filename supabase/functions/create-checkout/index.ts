@@ -52,6 +52,9 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      subscription_data: {
+        trial_period_days: 5,
+      },
       success_url: `${req.headers.get("origin")}/pricing?success=true`,
       cancel_url: `${req.headers.get("origin")}/pricing?canceled=true`,
     });
