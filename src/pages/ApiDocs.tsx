@@ -146,8 +146,6 @@ const pricingTiers = [
   { name: 'Max', requests: 'Unlimited', price: '$200/mo', tokens: 'Unlimited', support: '24/7 Dedicated' }
 ];
 
-const API_BASE_URL = 'https://gbbqdmgrjtdliiddikwq.supabase.co/functions/v1';
-
 const codeExamples = {
   curl: `# WISER AI - Chat Completion Example
 # Replace YOUR_API_KEY with your actual API key
