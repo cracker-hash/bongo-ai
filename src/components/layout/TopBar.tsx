@@ -1,14 +1,15 @@
-import { Menu, Moon, Sun, Bell, Sparkles, ChevronDown, Check } from 'lucide-react';
+import { Menu, Moon, Sun, Sparkles, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { PodcastGeneratorDialog } from '@/components/podcast/PodcastGeneratorDialog';
+import { NotificationsDropdown } from '@/components/layout/NotificationsDropdown';
+import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +67,7 @@ const wiserVersions = [
 
 export function TopBar() {
   const { sidebarOpen, setSidebarOpen } = useChat();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState('lite');
@@ -168,7 +169,7 @@ export function TopBar() {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
-            {/* Podcast Button - Before Notification */}
+            {/* Podcast Button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -183,14 +184,8 @@ export function TopBar() {
               <TooltipContent>Generate Podcast</TooltipContent>
             </Tooltip>
 
-            {/* Notification Bell */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-muted h-9 w-9"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
+            {/* Notifications */}
+            {isAuthenticated && <NotificationsDropdown />}
 
             {/* Credits */}
             <Button
@@ -211,15 +206,8 @@ export function TopBar() {
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            {/* User Avatar */}
-            {isAuthenticated && user && (
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={(user as any).user_metadata?.avatar_url || user.avatar} />
-                <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-blue-500 text-white text-xs">
-                  {user.email?.charAt(0).toUpperCase() || 'W'}
-                </AvatarFallback>
-              </Avatar>
-            )}
+            {/* Profile Dropdown */}
+            <ProfileDropdown />
           </div>
         </div>
       </header>

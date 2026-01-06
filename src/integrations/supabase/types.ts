@@ -91,6 +91,54 @@ export type Database = {
           },
         ]
       }
+      connected_accounts: {
+        Row: {
+          access_token: string | null
+          account_email: string | null
+          account_name: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          provider: string
+          provider_account_id: string | null
+          refresh_token: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider: string
+          provider_account_id?: string | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          provider_account_id?: string | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           chat_id: string | null
@@ -205,6 +253,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       projects: {
         Row: {
