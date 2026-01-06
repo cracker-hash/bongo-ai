@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Folder,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Library
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ import { CreateProjectDialog } from '@/components/layout/CreateProjectDialog';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { XpStats } from '@/components/gamification/XpStats';
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Collapsible,
   CollapsibleContent,
@@ -94,6 +96,7 @@ export function Sidebar() {
   } = useChat();
   const { isAuthenticated, setShowAuthModal, user, logout } = useAuth();
   const { projects, createProject, updateProject, deleteProject } = useProjects();
+  const navigate = useNavigate();
 
   // Rename project handler
   const handleRenameProject = async (id: string, name: string) => {
@@ -541,6 +544,21 @@ export function Sidebar() {
               </Button>
             )}
           </div>
+
+          {/* Library and Settings */}
+          {isAuthenticated && (
+            <div className="px-3 pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-9 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                onClick={() => navigate('/library')}
+              >
+                <Library className="h-4 w-4" />
+                Library
+              </Button>
+            </div>
+          )}
 
           {/* Settings and Logout */}
           {isAuthenticated && (
