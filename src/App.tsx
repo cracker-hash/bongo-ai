@@ -9,6 +9,7 @@ import Settings from "./pages/Settings";
 import InstallGuide from "./pages/InstallGuide";
 import Gallery from "./pages/Gallery";
 import Library from "./pages/Library";
+import ConnectedAccounts from "./pages/ConnectedAccounts";
 import Landing from "./pages/Landing";
 import ApiDocs from "./pages/ApiDocs";
 import Pricing from "./pages/Pricing";
@@ -44,6 +45,7 @@ const App = () => {
             <Route path="/install" element={<InstallGuide />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/library" element={<Library />} />
+            <Route path="/connected-accounts" element={<ConnectedAccounts />} />
             <Route path="/support" element={<Support />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
