@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
-import { PodcastGeneratorDialog } from '@/components/podcast/PodcastGeneratorDialog';
+
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,26 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Podcast icon component
-function PodcastIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      className={className}
-      stroke="currentColor" 
-      strokeWidth="1.5"
-    >
-      <path d="M12 22c0 0 0-2 0-4" strokeLinecap="round"/>
-      <path d="M8 22h8" strokeLinecap="round"/>
-      <circle cx="12" cy="9" r="3" fill="currentColor" />
-      <path d="M12 3c-3.866 0-7 3.134-7 7 0 2.209 1.021 4.177 2.618 5.464" strokeLinecap="round"/>
-      <path d="M12 3c3.866 0 7 3.134 7 7 0 2.209-1.021 4.177-2.618 5.464" strokeLinecap="round"/>
-      <path d="M12 6c-2.209 0-4 1.791-4 4 0 1.254.577 2.374 1.482 3.107" strokeLinecap="round"/>
-      <path d="M12 6c2.209 0 4 1.791 4 4 0 1.254-.577 2.374-1.482 3.107" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 const wiserVersions = [
   { 
@@ -64,7 +44,7 @@ export function TopBar() {
   const { sidebarOpen, setSidebarOpen } = useChat();
   const { user, isAuthenticated } = useAuth();
   const [isDark, setIsDark] = useState(true);
-  const [showPodcast, setShowPodcast] = useState(false);
+  
   const [selectedVersion, setSelectedVersion] = useState('lite');
 
   // Initialize theme from localStorage or system preference
@@ -171,27 +151,6 @@ export function TopBar() {
               <span className="text-sm">0</span>
             </Button>
 
-            {/* Podcast Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={() => setShowPodcast(true)}
-                  size="icon"
-                  className="h-9 w-9 rounded-full shadow-lg 
-                             bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600
-                             hover:from-cyan-500 hover:via-blue-600 hover:to-blue-700
-                             text-white border-0
-                             relative overflow-hidden
-                             before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_center,rgba(0,191,255,0.4),transparent_70%)] before:animate-pulse"
-                >
-                  <PodcastIcon className="h-4 w-4 relative z-10" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-card border-border">
-                <p>Generate Podcast</p>
-              </TooltipContent>
-            </Tooltip>
-
             {/* Theme Toggle Button */}
             <Button
               variant="ghost"
@@ -214,8 +173,6 @@ export function TopBar() {
           </div>
         </div>
       </header>
-
-      <PodcastGeneratorDialog open={showPodcast} onOpenChange={setShowPodcast} />
     </>
   );
 }
