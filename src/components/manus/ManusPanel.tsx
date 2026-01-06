@@ -118,7 +118,7 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle>Manus Automation</CardTitle>
+              <CardTitle>Wiser Automation</CardTitle>
               <CardDescription>AI-powered task automation</CardDescription>
             </div>
           </div>

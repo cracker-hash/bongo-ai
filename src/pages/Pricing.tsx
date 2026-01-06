@@ -6,102 +6,81 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { 
   Brain, Check, ArrowLeft, Zap, Shield, Headphones,
-  Star, ChevronRight, Loader2
+  Star, ChevronRight, Loader2, RefreshCw, Sparkles, 
+  Search, Globe, Presentation, Calendar, Users, Lock, ExternalLink
 } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { STRIPE_TIERS, getTierByProductId, TierKey } from '@/lib/stripeConfig';
+import wiserLogo from '@/assets/wiser-logo.png';
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free',
-    description: 'Perfect for getting started',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    priceId: null,
-    features: [
-      '1,000 API requests/month',
-      '1 podcast generation',
-      'Basic chat modes (Study, Quiz)',
-      'Community support',
-      '10K tokens/month'
-    ],
-    limitations: [
-      'No Manus automation',
-      'No API access',
-      'Basic voice only'
-    ],
-    cta: 'Current Plan',
-    popular: false
-  },
-  {
     id: 'lite',
     name: 'Lite',
-    description: 'For growing learners',
+    description: 'Standard monthly usage',
     monthlyPrice: 20,
-    yearlyPrice: 192,
+    yearlyPrice: 200,
     priceId: STRIPE_TIERS.lite.price_id,
     productId: STRIPE_TIERS.lite.product_id,
     features: [
-      '5,000 API requests/month',
-      '5 podcast generations',
-      'All chat modes',
-      'Priority email support',
-      '100K tokens/month',
-      'Project management',
-      'Basic analytics'
+      { icon: RefreshCw, text: '200 refresh credits everyday' },
+      { icon: Sparkles, text: '2,800 credits per month' },
+      { icon: Search, text: 'In-depth research for everyday tasks' },
+      { icon: Globe, text: 'Professional websites for standard output' },
+      { icon: Presentation, text: 'Insightful slides for regular content' },
+      { icon: Zap, text: 'Task scaling with Wide Research' },
+      { icon: Lock, text: 'Early access to beta features' },
+      { icon: Users, text: '14 concurrent tasks' },
+      { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    limitations: [
-      'Limited Manus automation',
-      'Basic API access'
-    ],
-    cta: 'Subscribe',
+    cta: 'Upgrade',
     popular: false
   },
   {
     id: 'pro',
     name: 'Pro',
-    description: 'For power users',
+    description: 'Customizable monthly usage',
     monthlyPrice: 40,
-    yearlyPrice: 384,
+    yearlyPrice: 400,
     priceId: STRIPE_TIERS.pro.price_id,
     productId: STRIPE_TIERS.pro.product_id,
+    creditOptions: ['5,600 credits / month', '8,400 credits / month', '11,200 credits / month'],
     features: [
-      '25,000 API requests/month',
-      '25 podcasts',
-      'Full Manus automation',
-      'Full API access',
-      '500K tokens/month',
-      'Advanced analytics',
-      'Custom integrations',
-      'Priority support'
+      { icon: RefreshCw, text: '200 refresh credits everyday' },
+      { icon: Sparkles, text: '5,600 credits per month' },
+      { icon: Search, text: 'In-depth research with self-set usage' },
+      { icon: Globe, text: 'Professional websites for changing needs' },
+      { icon: Presentation, text: 'Insightful slides for steady creation' },
+      { icon: Zap, text: 'Wide Research scaled to your chosen plan' },
+      { icon: Lock, text: 'Early access to beta features' },
+      { icon: Users, text: '14 concurrent tasks' },
+      { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    limitations: [],
-    cta: 'Subscribe',
+    cta: 'Upgrade',
     popular: true
   },
   {
     id: 'max',
     name: 'Max',
-    description: 'Enterprise-grade solution',
+    description: 'Extended usage for productivity',
     monthlyPrice: 200,
-    yearlyPrice: 1920,
+    yearlyPrice: 1996,
     priceId: STRIPE_TIERS.max.price_id,
     productId: STRIPE_TIERS.max.product_id,
     features: [
-      'Unlimited API requests',
-      'Unlimited podcasts',
-      'Unlimited tokens',
-      'White-label options',
-      'Dedicated account manager',
-      'Custom SLAs (99.99% uptime)',
-      'Advanced security (SSO, 2FA)',
-      '24/7 phone support'
+      { icon: RefreshCw, text: '200 refresh credits everyday' },
+      { icon: Sparkles, text: '28,000 credits per month' },
+      { icon: Search, text: 'In-depth research for large-scale tasks' },
+      { icon: Globe, text: 'Professional websites with data analytics' },
+      { icon: Presentation, text: 'Insightful slides for batch production' },
+      { icon: Zap, text: 'Wide Research for sustained heavy use' },
+      { icon: Lock, text: 'Early access to beta features' },
+      { icon: Users, text: '14 concurrent tasks' },
+      { icon: Calendar, text: '14 scheduled tasks' },
     ],
-    limitations: [],
-    cta: 'Subscribe',
+    cta: 'Upgrade',
     popular: false
   }
 ];
@@ -132,13 +111,12 @@ const faqs = [
 function PricingContent() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
-  const [isYearly, setIsYearly] = useState(false);
+  const [isYearly, setIsYearly] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<TierKey>('free');
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
 
   useEffect(() => {
-    // Check for success/cancel params
     if (searchParams.get('success') === 'true') {
       toast.success('Subscription successful! Welcome to your new plan.');
       checkSubscription();
@@ -178,7 +156,7 @@ function PricingContent() {
     }
 
     if (!plan.priceId) {
-      return; // Free plan
+      return;
     }
 
     setLoadingPlan(plan.id);
@@ -218,16 +196,12 @@ function PricingContent() {
   };
 
   const getPrice = (plan: typeof plans[0]) => {
-    if (plan.monthlyPrice === 0) return 'Free';
     const price = isYearly ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice;
     return `$${price}`;
   };
 
-  const getSavings = (plan: typeof plans[0]) => {
-    if (plan.monthlyPrice === 0) return null;
-    const monthlyCost = plan.monthlyPrice * 12;
-    const savings = monthlyCost - plan.yearlyPrice;
-    return Math.round((savings / monthlyCost) * 100);
+  const getSavingsPercent = () => {
+    return 17; // Save 17% with yearly
   };
 
   const isCurrentPlan = (planId: string) => planId === currentTier;
@@ -244,9 +218,7 @@ function PricingContent() {
             </Link>
             <div className="h-6 w-px bg-border" />
             <Link to="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
+              <img src={wiserLogo} alt="Wiser AI" className="h-8 w-8 rounded-lg" />
               <span className="font-bold">WISER AI</span>
             </Link>
           </div>
@@ -274,48 +246,41 @@ function PricingContent() {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Simple, <span className="gradient-text">Transparent</span> Pricing
+              Upgrade for <span className="gradient-text">Wiser 2.0 Max</span> access
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Choose the plan that's right for you. All plans include a 14-day free trial.
-            </p>
 
             {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-4">
-              <span className={`text-sm ${!isYearly ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <Button 
+                variant={!isYearly ? "default" : "ghost"} 
+                onClick={() => setIsYearly(false)}
+                className={`rounded-full ${!isYearly ? 'bg-muted text-foreground' : ''}`}
+              >
                 Monthly
-              </span>
-              <Switch checked={isYearly} onCheckedChange={setIsYearly} />
-              <span className={`text-sm ${isYearly ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                Yearly
-              </span>
-              {isYearly && (
-                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-500 border-green-500/30">
-                  Save 20%
-                </Badge>
-              )}
+              </Button>
+              <Button 
+                variant={isYearly ? "default" : "ghost"} 
+                onClick={() => setIsYearly(true)}
+                className={`rounded-full ${isYearly ? 'bg-muted text-foreground' : ''}`}
+              >
+                Annually · Save {getSavingsPercent()}%
+              </Button>
             </div>
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto mb-20">
+          {/* Pricing Cards - Manus-style layout */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
-                className={`relative flex flex-col ${
+                className={`relative flex flex-col bg-card/50 ${
                   plan.popular 
-                    ? 'border-primary shadow-lg shadow-primary/20 scale-105' 
+                    ? 'border-2 border-primary shadow-lg shadow-primary/20' 
                     : isCurrentPlan(plan.id)
-                    ? 'border-green-500 shadow-lg shadow-green-500/20'
+                    ? 'border-2 border-green-500 shadow-lg shadow-green-500/20'
                     : 'border-border/50'
                 }`}
               >
-                {plan.popular && !isCurrentPlan(plan.id) && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    Most Popular
-                  </div>
-                )}
                 {isCurrentPlan(plan.id) && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full flex items-center gap-1">
                     <Check className="h-3 w-3" />
@@ -323,53 +288,93 @@ function PricingContent() {
                   </div>
                 )}
                 
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {plan.name}
-                    {plan.id === 'max' && <Badge variant="outline">Enterprise</Badge>}
-                  </CardTitle>
-                  <div className="flex items-baseline gap-1">
+                <CardHeader className="pb-4">
+                  <div className="flex items-baseline gap-1 mb-2">
                     <span className="text-4xl font-bold">{getPrice(plan)}</span>
-                    {plan.monthlyPrice > 0 && (
-                      <span className="text-muted-foreground">/month</span>
-                    )}
+                    <span className="text-muted-foreground">/ month, billed {isYearly ? 'yearly' : 'monthly'}</span>
                   </div>
-                  {isYearly && getSavings(plan) && (
-                    <Badge variant="secondary" className="w-fit mt-1">
-                      Save ${plan.monthlyPrice * 12 - plan.yearlyPrice}/year
-                    </Badge>
-                  )}
-                  <CardDescription>{plan.description}</CardDescription>
+                  <CardDescription className="text-base">{plan.description}</CardDescription>
                 </CardHeader>
                 
-                <CardContent className="flex-1 flex flex-col">
-                  <ul className="space-y-3 flex-1">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  
+                <CardContent className="flex-1 flex flex-col pt-0">
                   <Button 
-                    className={`w-full mt-6 ${
+                    className={`w-full mb-6 ${
                       plan.popular && !isCurrentPlan(plan.id)
-                        ? 'bg-gradient-to-r from-primary to-secondary hover:opacity-90' 
+                        ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
                         : ''
                     }`}
                     variant={isCurrentPlan(plan.id) ? 'secondary' : plan.popular ? 'default' : 'outline'}
                     onClick={() => handleSubscribe(plan)}
-                    disabled={loadingPlan === plan.id || isCurrentPlan(plan.id) || plan.id === 'free'}
+                    disabled={loadingPlan === plan.id || isCurrentPlan(plan.id)}
                   >
                     {loadingPlan === plan.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {isCurrentPlan(plan.id) ? 'Current Plan' : plan.cta}
-                    {!isCurrentPlan(plan.id) && plan.id !== 'free' && <ChevronRight className="h-4 w-4 ml-1" />}
                   </Button>
+
+                  {/* Credit selector for Pro plan */}
+                  {plan.creditOptions && (
+                    <div className="mb-6">
+                      <select className="w-full bg-muted border border-border rounded-lg px-4 py-3 text-foreground">
+                        {plan.creditOptions.map((option, i) => (
+                          <option key={i} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <ul className="space-y-3 flex-1">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm">
+                        <feature.icon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span>{feature.text}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Team Section */}
+          <Card className="max-w-5xl mx-auto mb-6 bg-card/50 border-border/50">
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Team</h3>
+                  <p className="text-muted-foreground">Scale your team's productivity with Wiser</p>
+                </div>
+              </div>
+              <Button variant="outline">
+                Get Team
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Security Section */}
+          <Card className="max-w-5xl mx-auto mb-16 bg-card/50 border-border/50">
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="flex gap-2">
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center text-xs font-semibold">
+                    AICPA<br/>SOC 2
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+                    <Shield className="h-6 w-6" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Security and Compliance</h3>
+                  <p className="text-muted-foreground">Enterprise-grade security and industry-standard certifications.</p>
+                </div>
+              </div>
+              <Button variant="outline" className="gap-2">
+                Learn more <ExternalLink className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Features Comparison */}
           <div className="max-w-4xl mx-auto mb-20">
@@ -420,17 +425,9 @@ function PricingContent() {
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="text-center mt-20 py-12 px-6 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
-            <p className="text-muted-foreground mb-6">
-              Join thousands of learners and developers using WISER AI.
-            </p>
-            <Link to="/">
-              <Button size="lg" className="bg-gradient-to-r from-primary to-secondary">
-                Start Your Free Trial <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+          {/* Help Link */}
+          <div className="text-center mt-12 text-muted-foreground">
+            Having a problem? <a href="#" className="underline hover:text-foreground">Go to Help center</a>.
           </div>
         </div>
       </main>

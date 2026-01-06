@@ -79,9 +79,9 @@ const endpoints = [
   },
   {
     method: 'POST',
-    path: '/v1/manus/execute',
-    name: 'Manus Automation',
-    description: 'Execute automated tasks with the Manus agent',
+    path: '/v1/wiser/execute',
+    name: 'Wiser Automation',
+    description: 'Execute automated tasks with the Wiser agent',
     icon: Bot,
     category: 'Automation'
   },
@@ -310,7 +310,7 @@ app.post('/webhook/wiser', (req, res) => {
       console.log('Subscription updated:', event.data);
       break;
     case 'task.completed':
-      console.log('Manus task completed:', event.data);
+      console.log('Wiser task completed:', event.data);
       break;
   }
   
@@ -347,7 +347,7 @@ switch ($event['type']) {
         error_log('Subscription updated: ' . json_encode($event['data']));
         break;
     case 'task.completed':
-        // Handle Manus task completion
+        // Handle Wiser task completion
         error_log('Task completed: ' . json_encode($event['data']));
         break;
 }
@@ -807,7 +807,7 @@ function ApiDocsContent() {
                       {[
                         { event: 'usage.limit_reached', desc: 'Triggered when user reaches usage limit' },
                         { event: 'subscription.updated', desc: 'Subscription plan changed or renewed' },
-                        { event: 'task.completed', desc: 'Manus automation task completed' },
+                        { event: 'task.completed', desc: 'Wiser automation task completed' },
                         { event: 'podcast.generated', desc: 'Podcast generation finished' },
                         { event: 'document.analyzed', desc: 'Document analysis completed' }
                       ].map((item, i) => (

@@ -49,7 +49,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     features: [
       '100,000 API requests/month',
       'Unlimited podcasts',
-      'Manus automation',
+      'Wiser automation',
       'API access',
       'Advanced analytics'
     ]
@@ -92,8 +92,8 @@ export function hasFeatureAccess(plan: string, feature: string): boolean {
   const featureMatrix: Record<string, string[]> = {
     free: ['basic_chat', 'study_mode', 'quiz_mode'],
     lite: ['basic_chat', 'study_mode', 'quiz_mode', 'all_modes', 'projects', 'podcasts'],
-    pro: ['basic_chat', 'study_mode', 'quiz_mode', 'all_modes', 'projects', 'podcasts', 'manus', 'api_access', 'analytics'],
-    max: ['basic_chat', 'study_mode', 'quiz_mode', 'all_modes', 'projects', 'podcasts', 'manus', 'api_access', 'analytics', 'white_label', 'sso', 'custom_training']
+    pro: ['basic_chat', 'study_mode', 'quiz_mode', 'all_modes', 'projects', 'podcasts', 'wiser_automation', 'api_access', 'analytics'],
+    max: ['basic_chat', 'study_mode', 'quiz_mode', 'all_modes', 'projects', 'podcasts', 'wiser_automation', 'api_access', 'analytics', 'white_label', 'sso', 'custom_training']
   };
 
   return featureMatrix[plan]?.includes(feature) ?? false;
