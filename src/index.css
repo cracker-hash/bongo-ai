@@ -6,30 +6,30 @@
 
 @layer base {
   :root {
-    /* Modern ChatGPT-inspired dark theme */
-    --background: 220 13% 10%;
+    /* Wiser AI Blue Brand Theme */
+    --background: 220 15% 8%;
     --foreground: 0 0% 95%;
 
-    --card: 220 13% 13%;
+    --card: 220 15% 11%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 220 13% 13%;
+    --popover: 220 15% 12%;
     --popover-foreground: 0 0% 95%;
 
-    /* Accent blue-purple */
-    --primary: 248 80% 62%;
+    /* Primary Blue */
+    --primary: 210 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Teal accent */
-    --secondary: 172 66% 50%;
+    /* Cyan accent */
+    --secondary: 190 95% 45%;
     --secondary-foreground: 0 0% 100%;
 
     /* Muted surfaces */
-    --muted: 220 13% 18%;
+    --muted: 220 15% 15%;
     --muted-foreground: 220 10% 55%;
 
     /* Accent */
-    --accent: 248 80% 62%;
+    --accent: 210 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -38,26 +38,26 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
-    --border: 220 13% 22%;
-    --input: 220 13% 15%;
-    --ring: 248 80% 62%;
+    --border: 220 15% 18%;
+    --input: 220 15% 13%;
+    --ring: 210 100% 50%;
 
     --radius: 0.75rem;
 
     /* Sidebar */
-    --sidebar-background: 220 13% 8%;
+    --sidebar-background: 220 15% 6%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 248 80% 62%;
+    --sidebar-primary: 210 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 13% 14%;
+    --sidebar-accent: 220 15% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 220 13% 18%;
-    --sidebar-ring: 248 80% 62%;
+    --sidebar-border: 220 15% 16%;
+    --sidebar-ring: 210 100% 50%;
 
     /* Chat bubbles */
-    --user-bubble: 248 60% 55%;
+    --user-bubble: 210 90% 45%;
     --user-bubble-foreground: 0 0% 100%;
-    --ai-bubble: 220 13% 16%;
+    --ai-bubble: 220 15% 14%;
     --ai-bubble-foreground: 0 0% 95%;
 
     /* Online status */
@@ -66,29 +66,29 @@
 
   .light {
     --background: 0 0% 98%;
-    --foreground: 220 13% 10%;
+    --foreground: 220 15% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 10%;
+    --card-foreground: 220 15% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 10%;
-    --primary: 248 80% 55%;
+    --popover-foreground: 220 15% 10%;
+    --primary: 210 100% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 172 66% 40%;
+    --secondary: 190 95% 40%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 220 13% 94%;
+    --muted: 220 15% 94%;
     --muted-foreground: 220 10% 45%;
-    --accent: 248 80% 55%;
+    --accent: 210 100% 45%;
     --accent-foreground: 0 0% 100%;
-    --border: 220 13% 88%;
-    --input: 220 13% 94%;
-    --ring: 248 80% 55%;
+    --border: 220 15% 88%;
+    --input: 220 15% 94%;
+    --ring: 210 100% 45%;
     --sidebar-background: 0 0% 97%;
-    --sidebar-foreground: 220 13% 10%;
-    --sidebar-accent: 220 13% 94%;
-    --sidebar-border: 220 13% 88%;
-    --ai-bubble: 220 13% 96%;
-    --ai-bubble-foreground: 220 13% 10%;
-    --user-bubble: 248 70% 55%;
+    --sidebar-foreground: 220 15% 10%;
+    --sidebar-accent: 220 15% 94%;
+    --sidebar-border: 220 15% 88%;
+    --ai-bubble: 220 15% 96%;
+    --ai-bubble-foreground: 220 15% 10%;
+    --user-bubble: 210 90% 45%;
     --user-bubble-foreground: 0 0% 100%;
   }
 }
