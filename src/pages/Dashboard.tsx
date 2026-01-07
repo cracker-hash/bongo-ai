@@ -4,8 +4,9 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { TopBar } from '@/components/layout/TopBar';
 import { ApiKeyManagement } from '@/components/apikeys/ApiKeyManagement';
 import { UsageDashboard } from '@/components/usage/UsageDashboard';
+import { CreditsDashboard } from '@/components/credits/CreditsDashboard';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { Key, BarChart3, CreditCard } from 'lucide-react';
+import { Key, BarChart3, CreditCard, Coins } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getTierByProductId, TierKey } from '@/lib/stripeConfig';
 import { Button } from '@/components/ui/button';
@@ -51,9 +52,13 @@ function DashboardContent() {
     <div className="min-h-screen bg-background">
       <TopBar />
       <main className="pt-20 px-4 pb-8 max-w-6xl mx-auto">
-        <Tabs defaultValue="usage" className="space-y-6">
+        <Tabs defaultValue="credits" className="space-y-6">
           <div className="flex items-center justify-between">
             <TabsList>
+              <TabsTrigger value="credits" className="gap-2">
+                <Coins className="h-4 w-4" />
+                Credits
+              </TabsTrigger>
               <TabsTrigger value="usage" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Usage
@@ -68,6 +73,10 @@ function DashboardContent() {
               Manage Subscription
             </Button>
           </div>
+
+          <TabsContent value="credits">
+            <CreditsDashboard />
+          </TabsContent>
 
           <TabsContent value="usage">
             <UsageDashboard currentTier={currentTier} />

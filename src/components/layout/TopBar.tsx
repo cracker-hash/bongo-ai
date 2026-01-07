@@ -1,4 +1,4 @@
-import { Menu, Moon, Sun, Sparkles, ChevronDown, Check } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import wiserLogo from '@/assets/wiser-ai-logo.png';
 import { PodcastGeneratorDialog } from '@/components/podcast/PodcastGeneratorDialog';
 import { NotificationsDropdown } from '@/components/layout/NotificationsDropdown';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
+import { CreditBalance } from '@/components/credits/CreditBalance';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -187,14 +188,8 @@ export function TopBar() {
             {/* Notifications */}
             {isAuthenticated && <NotificationsDropdown />}
 
-            {/* Credits */}
-            <Button
-              variant="ghost"
-              className="h-9 px-3 gap-2 hover:bg-muted"
-            >
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm">0</span>
-            </Button>
+            {/* Credits Balance */}
+            {isAuthenticated && <CreditBalance compact />}
 
             {/* Theme Toggle Button */}
             <Button

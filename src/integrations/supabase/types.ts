@@ -139,6 +139,39 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          operation: string
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          operation: string
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          operation?: string
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           chat_id: string | null
@@ -384,6 +417,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_credits: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          last_daily_reset: string
+          last_monthly_reset: string | null
+          monthly_allocation: number
+          subscription_tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_daily_reset?: string
+          last_monthly_reset?: string | null
+          monthly_allocation?: number
+          subscription_tier?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_daily_reset?: string
+          last_monthly_reset?: string | null
+          monthly_allocation?: number
+          subscription_tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_gamification: {
         Row: {
