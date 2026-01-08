@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useGamification } from '@/hooks/useGamification';
+import { useCredits } from '@/hooks/useCredits';
 import { toast } from 'sonner';
 
 interface ChatContextType {
@@ -47,6 +48,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const { user, isAuthenticated } = useAuth();
   const { awardXP } = useGamification();
+  const { deductCredits, credits } = useCredits();
   const {
     chats,
     isLoadingChats,
@@ -149,6 +151,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [moveChatToProjectStorage]);
 
   const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
+    // Deduct credits for chat message
+    if (isAuthenticated && user) {
+      const result = await deductCredits('chat_message', undefined, 'Chat message sent');
+      if (!result.success) {
+        toast.error('Insufficient credits. Please upgrade your plan or wait for daily reset.');
+        return;
+      }
+    }
+
     // Check if this is an image generation request
     const isImageGenRequest = content.toLowerCase().startsWith('generate an image:') || 
                               content.toLowerCase().startsWith('create an image:') ||
@@ -303,7 +314,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
       },
     });
-  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats]);
+  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats, deductCredits]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
