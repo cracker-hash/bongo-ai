@@ -193,10 +193,49 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                               lowerContent.includes('generate audio of') ||
                               lowerContent.includes('text to speech:') ||
                               lowerContent.startsWith('speak:');
+    
+    // Task execution requests (autonomous agent tasks)
+    const isTaskExecution = lowerContent.startsWith('execute task:') ||
+                            lowerContent.startsWith('run task:') ||
+                            lowerContent.startsWith('automate:') ||
+                            lowerContent.includes('execute this task') ||
+                            lowerContent.includes('run automation') ||
+                            lowerContent.startsWith('task:');
+    
+    // Connector action requests (external service interactions)
+    const isConnectorAction = lowerContent.includes('connect to') ||
+                              lowerContent.includes('sync with') ||
+                              lowerContent.includes('fetch from notion') ||
+                              lowerContent.includes('fetch from linear') ||
+                              lowerContent.includes('get from google drive') ||
+                              lowerContent.includes('upload to') ||
+                              lowerContent.includes('send to slack') ||
+                              lowerContent.includes('post to') ||
+                              lowerContent.startsWith('connector:');
 
     // Handle credit deductions for premium features
     if (isAuthenticated && user) {
-      if (isVideoGenRequest) {
+      if (isTaskExecution) {
+        if (!canAfford('task_execution')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('task_execution', undefined, 'Task execution (10 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isConnectorAction) {
+        if (!canAfford('connector_action')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('connector_action', undefined, 'Connector action (5 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isVideoGenRequest) {
         if (!canAfford('video_generation')) {
           showOutOfCreditsToast();
           return;
