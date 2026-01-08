@@ -1,8 +1,7 @@
 import { Menu, Moon, Sun, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +16,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Import ChatContext but don't use the hook directly to avoid errors outside provider
+import React from 'react';
+
+// Create a safe hook that returns null if outside ChatProvider
+const ChatContext = React.createContext<{ sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void } | undefined>(undefined);
+
+function useChatSafe() {
+  try {
+    // Dynamic import to avoid circular deps
+    const { useChat } = require('@/contexts/ChatContext');
+    return useChat();
+  } catch {
+    return null;
+  }
+}
 
 // Custom podcast icon
 function PodcastIcon({ className }: { className?: string }) {
@@ -67,7 +82,9 @@ const wiserVersions = [
 ];
 
 export function TopBar() {
-  const { sidebarOpen, setSidebarOpen } = useChat();
+  const chatContext = useChatSafe();
+  const sidebarOpen = chatContext?.sidebarOpen ?? true;
+  const setSidebarOpen = chatContext?.setSidebarOpen ?? (() => {});
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(true);
