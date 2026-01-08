@@ -150,43 +150,82 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await moveChatToProjectStorage(id, projectId);
   }, [moveChatToProjectStorage]);
 
-  const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
-    // Check if this is an image generation request
-    const isImageGenRequest = content.toLowerCase().startsWith('generate an image:') || 
-                              content.toLowerCase().startsWith('create an image:') ||
-                              content.toLowerCase().startsWith('draw ') ||
-                              content.toLowerCase().includes('generate an image of');
-
-    // Only deduct credits for image generation (chat messages are free)
-    if (isImageGenRequest && isAuthenticated && user) {
-      if (!canAfford('image_generation')) {
-        toast.custom((t) => (
-          <div className="bg-card border border-border rounded-lg p-4 shadow-lg max-w-md">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-destructive">
-                <span className="text-lg">😢</span>
-                <span className="font-semibold">Oops! You're Out of Credits</span>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Upgrade to Wiser AI 2.0 Max to enjoy unlimited image generation and premium features.
-              </p>
-              <a 
-                href="/pricing" 
-                className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
-                onClick={() => toast.dismiss(t)}
-              >
-                Upgrade Now
-              </a>
-            </div>
+  // Helper to show out of credits toast
+  const showOutOfCreditsToast = useCallback(() => {
+    toast.custom((t) => (
+      <div className="bg-card border border-border rounded-lg p-4 shadow-lg max-w-md">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <span className="text-lg">😢</span>
+            <span className="font-semibold">Oops! You're Out of Credits</span>
           </div>
-        ), { duration: 8000 });
-        return;
-      }
-      
-      const result = await deductCredits('image_generation', undefined, 'Image generation');
-      if (!result.success) {
-        toast.error('Failed to process credits. Please try again.');
-        return;
+          <p className="text-muted-foreground text-sm">
+            Upgrade to Wiser AI 2.0 Max to enjoy unlimited features and premium capabilities.
+          </p>
+          <a 
+            href="/pricing" 
+            className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+            onClick={() => toast.dismiss(t)}
+          >
+            Upgrade Now
+          </a>
+        </div>
+      </div>
+    ), { duration: 8000 });
+  }, []);
+
+  const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
+    const lowerContent = content.toLowerCase();
+    
+    // Check request types
+    const isImageGenRequest = lowerContent.startsWith('generate an image:') || 
+                              lowerContent.startsWith('create an image:') ||
+                              lowerContent.startsWith('draw ') ||
+                              lowerContent.includes('generate an image of');
+    
+    const isVideoGenRequest = lowerContent.startsWith('generate a video:') || 
+                              lowerContent.startsWith('create a video:') ||
+                              lowerContent.includes('generate a video of') ||
+                              lowerContent.includes('make a video');
+    
+    const isAudioGenRequest = lowerContent.startsWith('generate audio:') || 
+                              lowerContent.startsWith('create audio:') ||
+                              lowerContent.includes('generate audio of') ||
+                              lowerContent.includes('text to speech:') ||
+                              lowerContent.startsWith('speak:');
+
+    // Handle credit deductions for premium features
+    if (isAuthenticated && user) {
+      if (isVideoGenRequest) {
+        if (!canAfford('video_generation')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('video_generation', undefined, 'Video generation (200 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isAudioGenRequest) {
+        if (!canAfford('audio_generation')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('audio_generation', undefined, 'Audio generation (30 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isImageGenRequest) {
+        if (!canAfford('image_generation')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('image_generation', undefined, 'Image generation (50 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
       }
     }
 
@@ -338,7 +377,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
       },
     });
-  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats, deductCredits, canAfford]);
+  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats, deductCredits, canAfford, showOutOfCreditsToast]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
