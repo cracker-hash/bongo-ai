@@ -8,7 +8,7 @@ export const CREDIT_COSTS = {
   beats_generation: 25,
   web_deployment: 100,
   connector_action: 5,
-  chat_message: 1,
+  chat_message: 0, // Chat messages are free
   document_processing: 15,
   podcast_generation: 75,
 } as const;

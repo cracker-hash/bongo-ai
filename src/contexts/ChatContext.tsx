@@ -48,7 +48,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const { user, isAuthenticated } = useAuth();
   const { awardXP } = useGamification();
-  const { deductCredits, credits } = useCredits();
+  const { deductCredits, credits, canAfford } = useCredits();
   const {
     chats,
     isLoadingChats,
@@ -151,20 +151,44 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [moveChatToProjectStorage]);
 
   const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
-    // Deduct credits for chat message
-    if (isAuthenticated && user) {
-      const result = await deductCredits('chat_message', undefined, 'Chat message sent');
-      if (!result.success) {
-        toast.error('Insufficient credits. Please upgrade your plan or wait for daily reset.');
-        return;
-      }
-    }
-
     // Check if this is an image generation request
     const isImageGenRequest = content.toLowerCase().startsWith('generate an image:') || 
                               content.toLowerCase().startsWith('create an image:') ||
                               content.toLowerCase().startsWith('draw ') ||
                               content.toLowerCase().includes('generate an image of');
+
+    // Only deduct credits for image generation (chat messages are free)
+    if (isImageGenRequest && isAuthenticated && user) {
+      if (!canAfford('image_generation')) {
+        toast.custom((t) => (
+          <div className="bg-card border border-border rounded-lg p-4 shadow-lg max-w-md">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-destructive">
+                <span className="text-lg">😢</span>
+                <span className="font-semibold">Oops! You're Out of Credits</span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Upgrade to Wiser AI 2.0 Max to enjoy unlimited image generation and premium features.
+              </p>
+              <a 
+                href="/pricing" 
+                className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+                onClick={() => toast.dismiss(t)}
+              >
+                Upgrade Now
+              </a>
+            </div>
+          </div>
+        ), { duration: 8000 });
+        return;
+      }
+      
+      const result = await deductCredits('image_generation', undefined, 'Image generation');
+      if (!result.success) {
+        toast.error('Failed to process credits. Please try again.');
+        return;
+      }
+    }
 
     const userImages: MessageImage[] = images?.map(url => ({ url, type: 'uploaded' as const })) || [];
     
@@ -314,7 +338,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
       },
     });
-  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats, deductCredits]);
+  }, [currentMode, currentChatId, messages, isAuthenticated, user, createChat, saveMessage, loadChats, deductCredits, canAfford]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
