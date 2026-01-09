@@ -242,6 +242,7 @@ Answer in the SAME LANGUAGE the user uses.`
               ...messages,
             ],
             stream: true,
+            max_tokens: 4096,
           }),
         });
 
