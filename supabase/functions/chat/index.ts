@@ -1,4 +1,4 @@
-// Migrated from Lovable AI to OpenAI Direct
+// Using OpenRouter API for chat
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -14,10 +14,11 @@ serve(async (req) => {
 
   try {
     const { messages, mode, generateImage, imagePrompt, isVoice } = await req.json();
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
+      throw new Error("No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)");
     }
 
     // Handle image generation requests with DALL-E 3
@@ -195,20 +196,32 @@ Answer in the SAME LANGUAGE the user uses.`
 
     console.log(`Processing chat request in ${mode} mode with ${messages.length} messages${isVoice ? ' (voice mode)' : ''}`);
 
-    // Using OpenAI GPT-4o-mini for chat with retry logic
+    // Using OpenRouter API for chat with retry logic
     const maxRetries = 3;
     let lastError: Error | null = null;
     
+    // Use OpenRouter if available, fallback to OpenAI
+    const useOpenRouter = !!OPENROUTER_API_KEY;
+    const apiUrl = useOpenRouter 
+      ? "https://openrouter.ai/api/v1/chat/completions" 
+      : "https://api.openai.com/v1/chat/completions";
+    const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
+    const model = useOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini";
+    
+    console.log(`Using ${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API`);
+    
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
+            ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
+            ...(useOpenRouter && { "X-Title": "Wiser AI" }),
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: model,
             messages: [
               { role: "system", content: systemPrompt },
               ...messages,
