@@ -13,13 +13,28 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, mode, generateImage, imagePrompt, isVoice } = await req.json();
+    const { messages, mode, model, generateImage, imagePrompt, isVoice } = await req.json();
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
     if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
       throw new Error("No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)");
     }
+    
+    // Model mapping from frontend to OpenRouter
+    const modelMap: Record<string, string> = {
+      'gpt-4o-mini': 'openai/gpt-4o-mini',
+      'gpt-4o': 'openai/gpt-4o',
+      'gpt-4-turbo': 'openai/gpt-4-turbo',
+      'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
+      'claude-3-opus': 'anthropic/claude-3-opus',
+      'gemini-2.0-flash': 'google/gemini-2.0-flash-001',
+      'gemini-1.5-pro': 'google/gemini-pro-1.5',
+      'llama-3.3-70b': 'meta-llama/llama-3.3-70b-instruct',
+      'deepseek-r1': 'deepseek/deepseek-r1',
+    };
+    
+    const selectedModel = modelMap[model] || 'openai/gpt-4o-mini';
 
     // Handle image generation requests with DALL-E 3
     if (generateImage && imagePrompt) {
@@ -206,9 +221,9 @@ Answer in the SAME LANGUAGE the user uses.`
       ? "https://openrouter.ai/api/v1/chat/completions" 
       : "https://api.openai.com/v1/chat/completions";
     const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
-    const model = useOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini";
+    const finalModel = useOpenRouter ? selectedModel : "gpt-4o-mini";
     
-    console.log(`Using ${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API`);
+    console.log(`Using ${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API with model: ${finalModel}`);
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -221,7 +236,7 @@ Answer in the SAME LANGUAGE the user uses.`
             ...(useOpenRouter && { "X-Title": "Wiser AI" }),
           },
           body: JSON.stringify({
-            model: model,
+            model: finalModel,
             messages: [
               { role: "system", content: systemPrompt },
               ...messages,
