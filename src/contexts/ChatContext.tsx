@@ -40,7 +40,7 @@ const getIsMobile = () => typeof window !== 'undefined' && window.innerWidth < 1
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMode, setCurrentMode] = useState<ChatMode>('conversation');
-  const [currentModel, setCurrentModel] = useState<AIModel>('gemini-flash');
+  const [currentModel, setCurrentModel] = useState<AIModel>('gpt-4o-mini');
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
@@ -430,6 +430,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await streamChat({
       messages: aiMessages,
       mode: currentMode,
+      model: currentModel,
       onDelta: (chunk) => {
         streamingMessageRef.current += chunk;
         setMessages(prev => prev.map(m => 

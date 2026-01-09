@@ -8,10 +8,15 @@ export type ChatMode =
   | 'coding';
 
 export type AIModel = 
-  | 'gemini-flash'
-  | 'gemini-pro'
-  | 'gpt-5'
-  | 'gpt-5-mini';
+  | 'gpt-4o-mini'
+  | 'gpt-4o'
+  | 'gpt-4-turbo'
+  | 'claude-3.5-sonnet'
+  | 'claude-3-opus'
+  | 'gemini-2.0-flash'
+  | 'gemini-1.5-pro'
+  | 'llama-3.3-70b'
+  | 'deepseek-r1';
 
 export interface MessageImage {
   url: string;
@@ -110,9 +115,14 @@ export const MODE_INFO: Record<ChatMode, { label: string; icon: string; descript
   },
 };
 
-export const MODEL_INFO: Record<AIModel, { label: string; description: string }> = {
-  'gemini-flash': { label: 'Gemini Flash', description: 'Fast & balanced' },
-  'gemini-pro': { label: 'Gemini Pro', description: 'Most capable' },
-  'gpt-5': { label: 'GPT-5', description: 'Advanced reasoning' },
-  'gpt-5-mini': { label: 'GPT-5 Mini', description: 'Quick responses' },
+export const MODEL_INFO: Record<AIModel, { label: string; description: string; openrouterId: string }> = {
+  'gpt-4o-mini': { label: 'GPT-4o Mini', description: 'Fast & affordable', openrouterId: 'openai/gpt-4o-mini' },
+  'gpt-4o': { label: 'GPT-4o', description: 'Most capable OpenAI', openrouterId: 'openai/gpt-4o' },
+  'gpt-4-turbo': { label: 'GPT-4 Turbo', description: 'Advanced reasoning', openrouterId: 'openai/gpt-4-turbo' },
+  'claude-3.5-sonnet': { label: 'Claude 3.5 Sonnet', description: 'Best for coding', openrouterId: 'anthropic/claude-3.5-sonnet' },
+  'claude-3-opus': { label: 'Claude 3 Opus', description: 'Most intelligent', openrouterId: 'anthropic/claude-3-opus' },
+  'gemini-2.0-flash': { label: 'Gemini 2.0 Flash', description: 'Fast & balanced', openrouterId: 'google/gemini-2.0-flash-001' },
+  'gemini-1.5-pro': { label: 'Gemini 1.5 Pro', description: 'Long context', openrouterId: 'google/gemini-pro-1.5' },
+  'llama-3.3-70b': { label: 'Llama 3.3 70B', description: 'Open source', openrouterId: 'meta-llama/llama-3.3-70b-instruct' },
+  'deepseek-r1': { label: 'DeepSeek R1', description: 'Reasoning model', openrouterId: 'deepseek/deepseek-r1' },
 };
