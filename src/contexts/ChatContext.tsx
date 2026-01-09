@@ -212,6 +212,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                               lowerContent.includes('send to slack') ||
                               lowerContent.includes('post to') ||
                               lowerContent.startsWith('connector:');
+    
+    // Web deployment requests
+    const isWebDeployment = lowerContent.startsWith('deploy:') ||
+                            lowerContent.startsWith('deploy to') ||
+                            lowerContent.includes('deploy website') ||
+                            lowerContent.includes('deploy app') ||
+                            lowerContent.includes('publish website') ||
+                            lowerContent.includes('publish app') ||
+                            lowerContent.includes('go live');
+    
+    // Music generation requests
+    const isMusicGenRequest = lowerContent.startsWith('generate music:') ||
+                              lowerContent.startsWith('create music:') ||
+                              lowerContent.includes('compose music') ||
+                              lowerContent.includes('make a song') ||
+                              lowerContent.includes('generate a beat') ||
+                              lowerContent.startsWith('music:');
 
     // Handle credit deductions for premium features
     if (isAuthenticated && user) {
@@ -261,6 +278,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           return;
         }
         const result = await deductCredits('image_generation', undefined, 'Image generation (50 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isWebDeployment) {
+        if (!canAfford('web_deployment')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('web_deployment', undefined, 'Web deployment (100 credits)');
+        if (!result.success) {
+          toast.error('Failed to process credits. Please try again.');
+          return;
+        }
+      } else if (isMusicGenRequest) {
+        if (!canAfford('music_generation')) {
+          showOutOfCreditsToast();
+          return;
+        }
+        const result = await deductCredits('music_generation', undefined, 'Music generation (40 credits)');
         if (!result.success) {
           toast.error('Failed to process credits. Please try again.');
           return;
