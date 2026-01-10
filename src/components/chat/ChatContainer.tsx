@@ -7,7 +7,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMode, QuizQuestion, DocumentAttachment } from '@/types/chat';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
-import { Menu } from 'lucide-react';
+import { Menu, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,12 +28,32 @@ export function ChatContainer() {
     documentContext: ''
   });
   const [isProcessingDocument, setIsProcessingDocument] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  // Track scroll position to show/hide scroll-to-bottom button
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom && messages.length > 0);
+    }
+  }, [messages.length]);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
 
   // Process document and generate quiz questions
   const processDocumentForQuiz = useCallback(async (document: DocumentAttachment) => {
@@ -210,7 +230,8 @@ export function ChatContainer() {
       {/* Messages area */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto scrollbar-thin"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto scrollbar-thin relative"
       >
         {messages.length === 0 && !quizState.isActive ? (
           <WelcomeScreen onPromptClick={handleQuickPrompt} />
@@ -250,6 +271,19 @@ export function ChatContainer() {
             )}
             {isLoading && <TypingIndicator />}
           </div>
+        )}
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && (
+          <Button
+            onClick={scrollToBottom}
+            size="icon"
+            variant="secondary"
+            className="fixed bottom-28 right-8 z-50 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
+            aria-label="Scroll to bottom"
+          >
+            <ArrowDown className="h-5 w-5" />
+          </Button>
         )}
       </div>
 

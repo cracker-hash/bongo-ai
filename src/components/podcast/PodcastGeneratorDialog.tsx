@@ -26,18 +26,28 @@ interface PodcastGeneratorDialogProps {
 }
 
 type GenerationStep = 'idle' | 'uploading' | 'extracting' | 'generating-script' | 'generating-audio' | 'complete';
+type PodcastMode = 'single' | 'conversation';
 
-const VOICE_OPTIONS = [
+const HOST_VOICES = [
+  { value: 'host', label: 'Host (Default)', description: 'Natural podcast host voice' },
   { value: 'narrator', label: 'Daniel (Narrator)', description: 'Clear, professional male voice' },
   { value: 'professional', label: 'Roger (Professional)', description: 'Formal business tone' },
   { value: 'engaging', label: 'George (Engaging)', description: 'Warm, friendly voice' },
+];
+
+const GUEST_VOICES = [
+  { value: 'guest', label: 'Guest (Default)', description: 'Natural guest voice' },
   { value: 'female', label: 'Sarah (Female)', description: 'Clear, professional female voice' },
+  { value: 'narrator', label: 'Daniel', description: 'Clear male voice' },
+  { value: 'engaging', label: 'George', description: 'Warm male voice' },
 ];
 
 export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorDialogProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [voice, setVoice] = useState('narrator');
+  const [podcastMode, setPodcastMode] = useState<PodcastMode>('conversation');
+  const [hostVoice, setHostVoice] = useState('host');
+  const [guestVoice, setGuestVoice] = useState('guest');
   const [step, setStep] = useState<GenerationStep>('idle');
   const [progress, setProgress] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -51,7 +61,9 @@ export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorD
   const resetState = () => {
     setTitle('');
     setContent('');
-    setVoice('narrator');
+    setPodcastMode('conversation');
+    setHostVoice('host');
+    setGuestVoice('guest');
     setStep('idle');
     setProgress(0);
     setAudioUrl(null);
@@ -157,11 +169,21 @@ export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorD
       setStep('generating-audio');
       setProgress(50);
 
-      const { data, error } = await supabase.functions.invoke('generate-podcast', {
-        body: { 
+      // Use the new ElevenLabs Studio for conversation podcasts
+      const endpoint = podcastMode === 'conversation' ? 'elevenlabs-studio' : 'generate-podcast';
+      
+      const { data, error } = await supabase.functions.invoke(endpoint, {
+        body: podcastMode === 'conversation' ? {
+          action: 'create-podcast',
           text: content,
           title: title || 'My Podcast',
-          voice,
+          mode: podcastMode,
+          hostVoice,
+          guestVoice,
+        } : { 
+          text: content,
+          title: title || 'My Podcast',
+          voice: hostVoice,
         },
       });
 
@@ -280,7 +302,10 @@ export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorD
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{title || 'Your Podcast'}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Generated with {VOICE_OPTIONS.find(v => v.value === voice)?.label}
+                  {podcastMode === 'conversation' 
+                    ? `Conversation with ${HOST_VOICES.find(v => v.value === hostVoice)?.label} & ${GUEST_VOICES.find(v => v.value === guestVoice)?.label}`
+                    : `Generated with ${HOST_VOICES.find(v => v.value === hostVoice)?.label}`
+                  }
                 </p>
                 
                 {/* Audio controls */}
@@ -418,15 +443,42 @@ export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorD
                 </p>
               </div>
 
+              {/* Podcast Mode Selection */}
+              <div className="space-y-2">
+                <Label>Podcast Style</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={podcastMode === 'single' ? 'default' : 'outline'}
+                    onClick={() => setPodcastMode('single')}
+                    disabled={step !== 'idle'}
+                    className="flex flex-col h-auto py-3"
+                  >
+                    <Mic className="h-5 w-5 mb-1" />
+                    <span className="text-xs">Solo Narrator</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={podcastMode === 'conversation' ? 'default' : 'outline'}
+                    onClick={() => setPodcastMode('conversation')}
+                    disabled={step !== 'idle'}
+                    className="flex flex-col h-auto py-3"
+                  >
+                    <Sparkles className="h-5 w-5 mb-1" />
+                    <span className="text-xs">Conversation</span>
+                  </Button>
+                </div>
+              </div>
+
               {/* Voice selection */}
               <div className="space-y-2">
-                <Label>Voice</Label>
-                <Select value={voice} onValueChange={setVoice} disabled={step !== 'idle'}>
+                <Label>{podcastMode === 'conversation' ? 'Host Voice' : 'Voice'}</Label>
+                <Select value={hostVoice} onValueChange={setHostVoice} disabled={step !== 'idle'}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {VOICE_OPTIONS.map((option) => (
+                    {HOST_VOICES.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         <div className="flex flex-col">
                           <span>{option.label}</span>
@@ -437,6 +489,28 @@ export function PodcastGeneratorDialog({ open, onOpenChange }: PodcastGeneratorD
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Guest Voice (only for conversation mode) */}
+              {podcastMode === 'conversation' && (
+                <div className="space-y-2">
+                  <Label>Guest Voice</Label>
+                  <Select value={guestVoice} onValueChange={setGuestVoice} disabled={step !== 'idle'}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GUEST_VOICES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex flex-col">
+                            <span>{option.label}</span>
+                            <span className="text-xs text-muted-foreground">{option.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Generate button */}
               <Button
