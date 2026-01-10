@@ -253,8 +253,10 @@ export function ChatContainer() {
         )}
       </div>
 
-      {/* Input area */}
-      <ChatInput onSend={handleSendMessage} />
+      {/* Input area - fixed at bottom */}
+      <div className="flex-shrink-0">
+        <ChatInput onSend={handleSendMessage} />
+      </div>
     </div>
   );
 }
