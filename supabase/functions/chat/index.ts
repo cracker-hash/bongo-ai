@@ -36,44 +36,75 @@ serve(async (req) => {
     
     const selectedModel = modelMap[model] || 'openai/gpt-4o-mini';
 
-    // Handle image generation requests with DALL-E 3
+    // Handle image generation requests with Freepik API
     if (generateImage && imagePrompt) {
-      console.log("Generating image with DALL-E 3:", imagePrompt);
+      console.log("Generating image with Freepik Mystic:", imagePrompt);
       
-      const response = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "dall-e-3",
-          prompt: imagePrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("DALL-E error:", response.status, errorText);
-        return new Response(JSON.stringify({ error: "Failed to generate image" }), {
+      const FREEPIK_API_KEY = Deno.env.get("FREEPIK_API_KEY");
+      
+      if (!FREEPIK_API_KEY) {
+        console.error("FREEPIK_API_KEY not configured");
+        return new Response(JSON.stringify({ error: "Image generation service not configured" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      const data = await response.json();
-      const generatedImage = data.data?.[0]?.url;
       
-      return new Response(JSON.stringify({ 
-        generatedImage,
-        textResponse: "Here's your generated image!",
-        type: 'image_generation'
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      try {
+        const response = await fetch("https://api.freepik.com/v1/ai/mystic", {
+          method: "POST",
+          headers: {
+            "x-freepik-api-key": FREEPIK_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: imagePrompt,
+            negative_prompt: "blurry, low quality, distorted, ugly, deformed",
+            num_images: 1,
+            image: {
+              size: "square_1_1",
+            },
+            styling: {
+              style: "photo",
+              color: "vibrant",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Freepik error:", response.status, errorText);
+          return new Response(JSON.stringify({ error: "Failed to generate image" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const data = await response.json();
+        const generatedImageBase64 = data.data?.[0]?.base64;
+        
+        if (!generatedImageBase64) {
+          console.error("No image data in Freepik response");
+          return new Response(JSON.stringify({ error: "No image generated" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        return new Response(JSON.stringify({ 
+          generatedImage: `data:image/png;base64,${generatedImageBase64}`,
+          textResponse: "Here's your generated image!",
+          type: 'image_generation'
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (imgError) {
+        console.error("Image generation error:", imgError);
+        return new Response(JSON.stringify({ error: "Image generation failed" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Voice mode personality enhancement
