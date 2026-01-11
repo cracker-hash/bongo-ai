@@ -26,11 +26,12 @@ serve(async (req) => {
       throw new Error('Text content is required');
     }
 
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
+      throw new Error('No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)');
     }
     
     if (!ELEVENLABS_API_KEY) {
@@ -39,15 +40,27 @@ serve(async (req) => {
 
     console.log(`Podcast generation started: title="${title}", text length=${text.length}`);
 
-    // Step 1: Generate podcast script using OpenAI
-    const scriptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use OpenRouter if available, fallback to OpenAI
+    const useOpenRouter = !!OPENROUTER_API_KEY;
+    const apiUrl = useOpenRouter 
+      ? "https://openrouter.ai/api/v1/chat/completions" 
+      : "https://api.openai.com/v1/chat/completions";
+    const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
+    const model = useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
+    
+    console.log(`Using ${useOpenRouter ? 'OpenRouter' : 'OpenAI'} for script generation`);
+
+    // Step 1: Generate podcast script
+    const scriptResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        ...(useOpenRouter && { 'HTTP-Referer': 'https://wiser-ai.lovable.app' }),
+        ...(useOpenRouter && { 'X-Title': 'Wiser AI Podcast' }),
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model,
         messages: [
           {
             role: 'system',

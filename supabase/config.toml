@@ -52,3 +52,15 @@ verify_jwt = false
 
 [functions.google-oauth]
 verify_jwt = false
+
+[functions.freepik-ai]
+verify_jwt = false
+
+[functions.elevenlabs-studio]
+verify_jwt = false
+
+[functions.pdf-processor]
+verify_jwt = false
+
+[functions.sync-credits]
+verify_jwt = false
