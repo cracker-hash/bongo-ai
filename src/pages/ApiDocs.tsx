@@ -957,6 +957,7 @@ function ApiKeyGenerator() {
 function ApiDocsContent() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -971,10 +972,10 @@ function ApiDocsContent() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               Back
-            </Link>
+            </button>
             <div className="h-6 w-px bg-border" />
             <Link to="/" className="flex items-center gap-2">
               <img src={wiserLogo} alt="Wiser AI" className="h-8 w-8 rounded-lg" />

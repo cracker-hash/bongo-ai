@@ -112,7 +112,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto flex items-center gap-4 h-16 px-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
           <div className="flex items-center gap-3">
             <img src={wiserLogo} alt="Wiser AI" className="h-8 w-8" />
             <h1 className="text-xl font-semibold">Settings</h1>

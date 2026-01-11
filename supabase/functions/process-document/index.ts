@@ -79,13 +79,22 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { content, filename, mode, question, userAnswer, documentContext, isPdf, fileBase64, fileName, fileType } = body;
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
+      throw new Error("No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)");
     }
-
-    console.log(`Processing request - mode: ${mode}, isPdf: ${isPdf}, fileType: ${fileType}`);
+    
+    // Use OpenRouter if available, fallback to OpenAI
+    const useOpenRouter = !!OPENROUTER_API_KEY;
+    const apiUrl = useOpenRouter 
+      ? "https://openrouter.ai/api/v1/chat/completions" 
+      : "https://api.openai.com/v1/chat/completions";
+    const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
+    const model = useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
+    
+    console.log(`Processing request - mode: ${mode}, isPdf: ${isPdf}, fileType: ${fileType}, using: ${useOpenRouter ? 'OpenRouter' : 'OpenAI'}`);
 
     // Handle simple text extraction for podcast generator
     if (fileBase64 && fileType === 'pdf') {
@@ -130,22 +139,25 @@ Respond with valid JSON only (no markdown):
   "additionalInfo": "Related insight if correct"
 }`;
 
-      const validationResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const validationResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
+          ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
+          ...(useOpenRouter && { "X-Title": "Wiser AI" }),
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model,
           messages: [{ role: "user", content: validationPrompt }],
           response_format: { type: "json_object" },
+          max_tokens: 2000,
         }),
       });
 
       if (!validationResponse.ok) {
         const errorText = await validationResponse.text();
-        console.error("OpenAI validation error:", validationResponse.status, errorText);
+        console.error("Validation error:", validationResponse.status, errorText);
         throw new Error("Failed to validate answer");
       }
 
@@ -234,18 +246,21 @@ Document content:
 ${processedContent}`;
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
+        ...(useOpenRouter && { "X-Title": "Wiser AI" }),
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [
           { role: "system", content: "You are WISER AI, an expert educational content analyzer." },
           { role: "user", content: userPrompt },
         ],
+        max_tokens: 4000,
         ...(mode === "quiz" ? { response_format: { type: "json_object" } } : {}),
       }),
     });
