@@ -190,13 +190,13 @@ export function TopBar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => navigate('/api-docs')}
+                  onClick={() => navigate('/docs')}
                   className="hover:bg-muted h-8 w-8"
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Documentation</TooltipContent>
+              <TooltipContent>API Documentation</TooltipContent>
             </Tooltip>
           </div>
 
