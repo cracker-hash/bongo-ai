@@ -151,7 +151,7 @@ Respond with valid JSON only (no markdown):
           model,
           messages: [{ role: "user", content: validationPrompt }],
           response_format: { type: "json_object" },
-          max_tokens: 2000,
+          max_tokens: 1500,
         }),
       });
 
@@ -260,7 +260,7 @@ ${processedContent}`;
           { role: "system", content: "You are WISER AI, an expert educational content analyzer." },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 4000,
+        max_tokens: 2048,
         ...(mode === "quiz" ? { response_format: { type: "json_object" } } : {}),
       }),
     });
@@ -272,8 +272,14 @@ ${processedContent}`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "API credits exhausted. Please add credits to continue." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const errorText = await response.text();
-      console.error("OpenAI error:", response.status, errorText);
+      console.error("API error:", response.status, errorText);
       throw new Error("Failed to process document");
     }
 
