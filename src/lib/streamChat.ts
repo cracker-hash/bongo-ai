@@ -1,6 +1,13 @@
+import { supabase } from "@/integrations/supabase/client";
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 type Msg = { role: "user" | "assistant"; content: string | any[] };
+
+async function getAuthToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 export async function streamChat({
   messages,
@@ -18,11 +25,18 @@ export async function streamChat({
   onError: (error: string) => void;
 }) {
   try {
+    const token = await getAuthToken();
+    
+    if (!token) {
+      onError("Please sign in to use the chat feature");
+      return;
+    }
+
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ messages, mode, model }),
     });
@@ -106,11 +120,17 @@ interface GenerateImageResult {
 
 export async function generateImage(prompt: string): Promise<GenerateImageResult> {
   try {
+    const token = await getAuthToken();
+    
+    if (!token) {
+      throw new Error("Please sign in to generate images");
+    }
+
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ 
         generateImage: true,
@@ -119,7 +139,8 @@ export async function generateImage(prompt: string): Promise<GenerateImageResult
     });
 
     if (!resp.ok) {
-      throw new Error("Failed to generate image");
+      const errorData = await resp.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to generate image");
     }
 
     const data = await resp.json();

@@ -1,24 +1,100 @@
-// Using OpenRouter API for chat
+// Secured Chat Edge Function with auth, validation, and restricted CORS
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://wiser-ai.lovable.app',
+  'https://gbbqdmgrjtdliiddikwq.lovableproject.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o.replace(/:\d+$/, ''))) 
+    ? origin 
+    : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+// Input validation schema
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.union([z.string().max(50000), z.array(z.any())])
+});
+
+const ChatRequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1).max(100),
+  mode: z.enum(['conversation', 'study', 'quiz', 'research', 'game', 'creative', 'coding']).optional(),
+  model: z.string().max(50).optional(),
+  generateImage: z.boolean().optional(),
+  imagePrompt: z.string().max(1000).optional(),
+  isVoice: z.boolean().optional()
+});
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, mode, model, generateImage, imagePrompt, isVoice } = await req.json();
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+    
+    if (claimsError || !claimsData?.user) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = ChatRequestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(JSON.stringify({ error: 'Invalid request format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { messages, mode = 'conversation', model, generateImage, imagePrompt, isVoice } = validationResult.data;
+    
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
     if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
-      throw new Error("No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)");
+      console.error("No AI API key configured");
+      return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
     
     // Model mapping from frontend to OpenRouter
@@ -34,18 +110,18 @@ serve(async (req) => {
       'deepseek-r1': 'deepseek/deepseek-r1',
     };
     
-    const selectedModel = modelMap[model] || 'openai/gpt-4o-mini';
+    const selectedModel = modelMap[model || ''] || 'openai/gpt-4o-mini';
 
     // Handle image generation requests with Freepik API
     if (generateImage && imagePrompt) {
-      console.log("Generating image with Freepik Mystic:", imagePrompt);
+      console.log("Image generation request received");
       
       const FREEPIK_API_KEY = Deno.env.get("FREEPIK_API_KEY");
       
       if (!FREEPIK_API_KEY) {
-        console.error("FREEPIK_API_KEY not configured");
-        return new Response(JSON.stringify({ error: "Image generation service not configured" }), {
-          status: 500,
+        console.error("Image service not configured");
+        return new Response(JSON.stringify({ error: "Image generation unavailable" }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -58,23 +134,17 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            prompt: imagePrompt,
+            prompt: imagePrompt.slice(0, 1000),
             negative_prompt: "blurry, low quality, distorted, ugly, deformed",
             num_images: 1,
-            image: {
-              size: "square_1_1",
-            },
-            styling: {
-              style: "photo",
-              color: "vibrant",
-            },
+            image: { size: "square_1_1" },
+            styling: { style: "photo", color: "vibrant" },
           }),
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Freepik error:", response.status, errorText);
-          return new Response(JSON.stringify({ error: "Failed to generate image" }), {
+          console.error("Image generation failed:", response.status);
+          return new Response(JSON.stringify({ error: "Image generation failed" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -84,7 +154,6 @@ serve(async (req) => {
         const generatedImageBase64 = data.data?.[0]?.base64;
         
         if (!generatedImageBase64) {
-          console.error("No image data in Freepik response");
           return new Response(JSON.stringify({ error: "No image generated" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,12 +217,6 @@ CORE PRINCIPLES:
 - Break down complex topics into simple, step-by-step explanations
 - For math and science, use LaTeX: $inline$ and $$display$$ notation
 
-STUDY MODE FEATURES:
-- Simplified Explanations: Break complex topics into digestible steps
-- Adaptive Difficulty: Detect user's level and adjust
-- Visual Aids: Render diagrams, flowcharts, step-by-step breakdowns
-- Practice Prompts: Suggest self-tests
-
 ${voiceEnhancement}
 
 Answer in the SAME LANGUAGE the user uses.`,
@@ -167,16 +230,6 @@ QUIZ MODE RULES (STRICT):
 - If wrong: Explain the concept deeply, then say "Try again!"
 - If correct: Praise briefly, explain the concept, give next question
 
-QUESTION GENERATION:
-- From uploaded content ONLY when available
-- Generate 5-10 questions per session, progressing logically
-- Format: Primarily short-answer questions
-- Mix recall, application, and analysis questions
-
-SCORING:
-- Track score: "Correct! That's 1/5."
-- End Quiz: Give overall score and weak areas
-
 ${voiceEnhancement}
 
 Answer in the SAME LANGUAGE the user uses.`,
@@ -187,9 +240,7 @@ IDENTITY: Created in Tanzania by Tito Oscar Mwaisengela.
 
 RESEARCH MODE FEATURES:
 - Provide in-depth, well-structured research summaries
-- Cite types of sources when applicable
 - Use proper markdown formatting
-- For scientific/math content, use LaTeX notation
 
 ${voiceEnhancement}
 
@@ -200,10 +251,8 @@ Answer in the SAME LANGUAGE the user uses.`,
 IDENTITY: Created in Tanzania by Tito Oscar Mwaisengela.
 
 GAME MODE FEATURES:
-- Create fun text-based games, puzzles, riddles, and challenges
-- Turn educational content into engaging games
+- Create fun text-based games, puzzles, riddles
 - Be playful, engaging, and creative
-- Celebrate wins enthusiastically
 
 ${voiceEnhancement}
 
@@ -214,10 +263,8 @@ Answer in the SAME LANGUAGE the user uses.`,
 IDENTITY: Created in Tanzania by Tito Oscar Mwaisengela.
 
 CREATIVE MODE FEATURES:
-- Help with creative writing, brainstorming, and ideas
-- Generate writing prompts, story ideas, essay outlines
+- Help with creative writing, brainstorming
 - Be imaginative and inspiring
-- Offer multiple creative directions
 
 ${voiceEnhancement}
 
@@ -228,10 +275,8 @@ Answer in the SAME LANGUAGE the user uses.`,
 IDENTITY: Created in Tanzania by Tito Oscar Mwaisengela.
 
 CODING MODE FEATURES:
-- Help with programming questions, debugging, code reviews
-- Provide code examples with proper markdown formatting
-- Support all major programming languages
-- Always use proper syntax highlighting with \`\`\`language
+- Help with programming, debugging, code reviews
+- Use proper syntax highlighting
 
 ${voiceEnhancement}
 
@@ -240,21 +285,16 @@ Answer in the SAME LANGUAGE the user uses.`
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
-    console.log(`Processing chat request in ${mode} mode with ${messages.length} messages${isVoice ? ' (voice mode)' : ''}`);
+    console.log(`Chat request: mode=${mode}, messages=${messages.length}, user=${claimsData.user.id.slice(0, 8)}`);
 
     // Using OpenRouter API for chat with retry logic
     const maxRetries = 3;
-    let lastError: Error | null = null;
-    
-    // Use OpenRouter if available, fallback to OpenAI
     const useOpenRouter = !!OPENROUTER_API_KEY;
     const apiUrl = useOpenRouter 
       ? "https://openrouter.ai/api/v1/chat/completions" 
       : "https://api.openai.com/v1/chat/completions";
     const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
     const finalModel = useOpenRouter ? selectedModel : "gpt-4o-mini";
-    
-    console.log(`Using ${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API with model: ${finalModel}`);
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -284,50 +324,45 @@ Answer in the SAME LANGUAGE the user uses.`
         }
 
         if (response.status === 402) {
-          console.error("OpenRouter credits exhausted");
-          return new Response(JSON.stringify({ error: "API credits exhausted. Please add credits to OpenRouter or contact support." }), {
+          console.error("API credits exhausted");
+          return new Response(JSON.stringify({ error: "Service credits exhausted. Please try again later." }), {
             status: 402,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
         if (response.status === 429) {
-          const retryAfter = response.headers.get('retry-after');
-          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
-          console.log(`Rate limited, attempt ${attempt + 1}/${maxRetries}, waiting ${waitTime}ms`);
-          
+          const waitTime = Math.pow(2, attempt) * 1000;
           if (attempt < maxRetries - 1) {
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           }
-          
-          console.error("Rate limit exceeded after retries");
-          return new Response(JSON.stringify({ error: "Service is busy. Please wait a moment and try again." }), {
+          return new Response(JSON.stringify({ error: "Service is busy. Please wait and try again." }), {
             status: 429,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const errorText = await response.text();
-        console.error("API error:", response.status, errorText);
-        return new Response(JSON.stringify({ error: `AI service error: ${response.status}` }), {
+        console.error("API error:", response.status);
+        return new Response(JSON.stringify({ error: "Unable to process request" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch (fetchError) {
-        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-        console.error(`Attempt ${attempt + 1} failed:`, lastError.message);
-        
+        console.error(`Attempt ${attempt + 1} failed:`, fetchError);
         if (attempt < maxRetries - 1) {
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
       }
     }
     
-    throw lastError || new Error("Failed after retries");
+    return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Chat function error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Unable to process request" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
