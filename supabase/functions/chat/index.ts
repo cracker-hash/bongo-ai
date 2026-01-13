@@ -273,13 +273,21 @@ Answer in the SAME LANGUAGE the user uses.`
               ...messages,
             ],
             stream: true,
-            max_tokens: 4096,
+            max_tokens: 2048,
           }),
         });
 
         if (response.ok) {
           return new Response(response.body, {
             headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+          });
+        }
+
+        if (response.status === 402) {
+          console.error("OpenRouter credits exhausted");
+          return new Response(JSON.stringify({ error: "API credits exhausted. Please add credits to OpenRouter or contact support." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
@@ -301,8 +309,8 @@ Answer in the SAME LANGUAGE the user uses.`
         }
 
         const errorText = await response.text();
-        console.error("OpenAI error:", response.status, errorText);
-        return new Response(JSON.stringify({ error: "AI service error" }), {
+        console.error("API error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: `AI service error: ${response.status}` }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
