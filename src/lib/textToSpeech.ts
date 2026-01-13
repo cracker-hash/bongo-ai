@@ -1,4 +1,10 @@
 // Text-to-Speech utility with ElevenLabs integration and Swahili support
+import { supabase } from "@/integrations/supabase/client";
+
+async function getAuthToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 /**
  * Cleans text for speech synthesis by removing markdown, symbols, and formatting
@@ -101,14 +107,19 @@ async function speakWithElevenLabs(options: SpeakOptions): Promise<void> {
   try {
     options.onStart?.();
     
+    const token = await getAuthToken();
+    
+    if (!token) {
+      throw new Error('Please sign in to use text-to-speech');
+    }
+    
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           text: cleanedText,
