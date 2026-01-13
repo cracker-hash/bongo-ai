@@ -1,4 +1,4 @@
-import { Menu, Moon, Sun, ChevronDown, Check } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronDown, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useContext } from 'react';
@@ -183,6 +183,21 @@ export function TopBar() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Documentation Icon */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/api-docs')}
+                  className="hover:bg-muted h-8 w-8"
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Documentation</TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Right section */}
