@@ -33,7 +33,7 @@ interface ChatContextType {
   moveChatToProject: (id: string, projectId: string | null) => Promise<void>;
 }
 
-const ChatContext = createContext<ChatContextType | undefined>(undefined);
+export const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 const getIsMobile = () => typeof window !== 'undefined' && window.innerWidth < 1024;
 

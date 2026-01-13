@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useChat } from '@/contexts/ChatContext';
+import { ChatContext } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProjects, Project } from '@/hooks/useProjects';
 import { ChatMode, MODE_INFO } from '@/types/chat';
@@ -32,7 +32,7 @@ import { ProjectMenu } from '@/components/layout/ProjectMenu';
 import { CreateProjectDialog } from '@/components/layout/CreateProjectDialog';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { XpStats } from '@/components/gamification/XpStats';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext as useReactContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Collapsible,
@@ -66,6 +66,31 @@ const modeIcons: Record<ChatMode, React.ReactNode> = {
   coding: <MessageCircle className="h-4 w-4" />,
 };
 
+// Safe hook to use chat context - returns defaults if not in provider
+function useChatSafe() {
+  const context = useReactContext(ChatContext);
+  if (!context) {
+    return {
+      sidebarOpen: false,
+      setSidebarOpen: () => {},
+      chats: [],
+      currentChatId: null,
+      selectChat: () => {},
+      deleteChat: async () => {},
+      createNewChat: () => {},
+      createChatForProject: async () => {},
+      isLoadingChats: false,
+      clearMessages: () => {},
+      renameChat: async () => {},
+      pinChat: async () => {},
+      archiveChat: async () => {},
+      moveChatToProject: async () => {},
+      messages: []
+    };
+  }
+  return context;
+}
+
 export function Sidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -93,7 +118,7 @@ export function Sidebar() {
     archiveChat,
     moveChatToProject,
     messages
-  } = useChat();
+  } = useChatSafe();
   const { isAuthenticated, setShowAuthModal, user, logout } = useAuth();
   const { projects, createProject, updateProject, deleteProject } = useProjects();
   const navigate = useNavigate();
