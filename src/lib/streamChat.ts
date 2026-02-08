@@ -5,8 +5,12 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 type Msg = { role: "user" | "assistant"; content: string | any[] };
 
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function streamChat({
@@ -26,18 +30,22 @@ export async function streamChat({
 }) {
   try {
     const token = await getAuthToken();
-    
-    if (!token) {
-      onError("Please sign in to use the chat feature");
-      return;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    };
+
+    // Add auth token if available, otherwise send without it
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    } else {
+      headers["Authorization"] = `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
     }
 
     const resp = await fetch(CHAT_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify({ messages, mode, model }),
     });
 

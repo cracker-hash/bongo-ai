@@ -1,27 +1,13 @@
-// Secured Chat Edge Function with auth, validation, and restricted CORS
+// Chat Edge Function - supports both authenticated and unauthenticated users
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://wiser-ai.lovable.app',
-  'https://gbbqdmgrjtdliiddikwq.lovableproject.com',
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-function getCorsHeaders(origin: string | null) {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o.replace(/:\d+$/, ''))) 
-    ? origin 
-    : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 // Input validation schema
 const MessageSchema = z.object({
@@ -39,37 +25,30 @@ const ChatRequestSchema = z.object({
 });
 
 serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authentication check
+    // Try to authenticate, but don't require it
+    let userId: string | null = null;
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
     
-    if (claimsError || !claimsData?.user) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        const token = authHeader.replace('Bearer ', '');
+        const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+        if (!claimsError && claimsData?.user) {
+          userId = claimsData.user.id;
+        }
+      } catch {
+        // Auth failed, continue as unauthenticated
+      }
     }
 
     // Parse and validate input
@@ -114,6 +93,14 @@ serve(async (req) => {
 
     // Handle image generation requests with Freepik API
     if (generateImage && imagePrompt) {
+      // Image generation requires authentication
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Please sign in to generate images' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       console.log("Image generation request received");
       
       const FREEPIK_API_KEY = Deno.env.get("FREEPIK_API_KEY");
@@ -285,7 +272,7 @@ Answer in the SAME LANGUAGE the user uses.`
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
-    console.log(`Chat request: mode=${mode}, messages=${messages.length}, user=${claimsData.user.id.slice(0, 8)}`);
+    console.log(`Chat request: mode=${mode}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
 
     // Using OpenRouter API for chat with retry logic
     const maxRetries = 3;

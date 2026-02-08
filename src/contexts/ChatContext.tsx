@@ -230,7 +230,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                               lowerContent.includes('generate a beat') ||
                               lowerContent.startsWith('music:');
 
-    // Handle credit deductions for premium features
+    // Handle credit deductions for premium features (only for authenticated users)
     if (isAuthenticated && user) {
       if (isTaskExecution) {
         if (!canAfford('task_execution')) {
@@ -305,6 +305,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // For unauthenticated users, block premium features that require auth
+    if (!isAuthenticated && (isImageGenRequest || isVideoGenRequest || isAudioGenRequest || isMusicGenRequest)) {
+      toast.error('Please sign in to use this feature');
+      return;
+    }
+
     const userImages: MessageImage[] = images?.map(url => ({ url, type: 'uploaded' as const })) || [];
     
     const userMessage: Message = {
@@ -323,7 +329,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     let chatId = currentChatId;
 
-    // Create chat if needed (for authenticated users)
+    // Create chat if needed (only for authenticated users)
     if (isAuthenticated && user && !chatId) {
       const chatName = content.slice(0, 50) + (content.length > 50 ? '...' : '');
       chatId = await createChat(chatName, currentMode);
@@ -332,7 +338,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Save user message
+    // Save user message (only for authenticated users)
     if (isAuthenticated && user && chatId) {
       await saveMessage(chatId, content, 'user', currentMode);
     }
@@ -358,10 +364,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Auto-save generated image to gallery (Supabase) and award XP
+        // Auto-save generated image to gallery (only for authenticated users)
         if (result.generatedImage && isAuthenticated && user) {
           try {
-            // Save to gallery
             const { data: insertedImage } = await supabase.from('generated_images').insert({
               user_id: user.id,
               url: result.generatedImage,
@@ -369,13 +374,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               chat_id: chatId || null,
             }).select('id').single();
             
-            // Get current image count for badge checking
             const { count } = await supabase
               .from('generated_images')
               .select('*', { count: 'exact', head: true })
               .eq('user_id', user.id);
             
-            // Award XP for image generation with image count for badges
             awardXP('generateImage', undefined, count || 1);
             
             toast.success('Image saved to gallery');
@@ -399,7 +402,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // Prepare messages for AI (including images)
     const aiMessages = [...messages, userMessage].map(m => {
       if (m.images && m.images.length > 0) {
-        // Format for vision model
         return {
           role: m.role,
           content: [
@@ -441,16 +443,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       },
       onDone: async () => {
         setIsLoading(false);
-        // Save assistant message
+        // Save assistant message (only for authenticated users)
         if (isAuthenticated && user && chatId && streamingMessageRef.current) {
           await saveMessage(chatId, streamingMessageRef.current, 'assistant', currentMode);
-          loadChats(); // Refresh chat list
+          loadChats();
         }
       },
       onError: (error) => {
         setIsLoading(false);
         toast.error(error);
-        // Remove empty assistant message on error
         setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
       },
     });
