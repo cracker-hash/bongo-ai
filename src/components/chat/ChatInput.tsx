@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useChat } from '@/contexts/ChatContext';
-import { MODE_INFO, MODEL_INFO, ChatMode, AIModel } from '@/types/chat';
+import { MODE_INFO, ChatMode } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '@/lib/speechToText';
@@ -86,7 +86,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const { currentMode, currentModel, setCurrentMode, setCurrentModel, isLoading } = useChat();
+  const { currentMode, setCurrentMode, isLoading } = useChat();
 
   const handleSend = () => {
     if ((input.trim() || attachedImages.length > 0 || attachedDocument) && !isLoading) {
@@ -307,7 +307,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
   );
 
   const modes = Object.entries(MODE_INFO) as [ChatMode, typeof MODE_INFO[ChatMode]][];
-  const models = Object.entries(MODEL_INFO) as [AIModel, typeof MODEL_INFO[AIModel]][];
 
   // Get connected connectors count
   const connectedCount = [...appConnectors, ...apiConnectors].filter(c => c.connected).length;
@@ -515,36 +514,6 @@ export function ChatInput({ onSend }: ChatInputProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Model Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:bg-muted rounded-full"
-                  >
-                    {MODEL_INFO[currentModel].label}
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52 bg-card border-border">
-                  {models.map(([model, info]) => (
-                    <DropdownMenuItem
-                      key={model}
-                      onClick={() => setCurrentModel(model)}
-                      className={cn(
-                        "cursor-pointer py-2",
-                        currentModel === model && "bg-accent"
-                      )}
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium text-sm">{info.label}</span>
-                        <span className="text-xs text-muted-foreground">{info.description}</span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
             <div className="flex items-center gap-1">
