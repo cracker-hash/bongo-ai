@@ -17,20 +17,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Import ChatContext but don't use the hook directly to avoid errors outside provider
 import React from 'react';
-
-// Create a safe hook that returns null if outside ChatProvider
-const ChatContext = React.createContext<{ sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void } | undefined>(undefined);
+import { ChatContext } from '@/contexts/ChatContext';
 
 function useChatSafe() {
-  try {
-    // Dynamic import to avoid circular deps
-    const { useChat } = require('@/contexts/ChatContext');
-    return useChat();
-  } catch {
-    return null;
+  const context = React.useContext(ChatContext);
+  if (!context) {
+    return { sidebarOpen: true, setSidebarOpen: () => {} };
   }
+  return context;
 }
 
 // Custom podcast icon
