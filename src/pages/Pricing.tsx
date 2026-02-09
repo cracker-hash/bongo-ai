@@ -17,6 +17,25 @@ import wiserLogo from '@/assets/wiser-logo.png';
 
 const plans = [
   {
+    id: 'free',
+    name: 'Free',
+    description: 'Perfect for getting started',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    priceId: null,
+    productId: null,
+    trialDays: 0,
+    features: [
+      { icon: RefreshCw, text: '50 refresh credits everyday' },
+      { icon: Sparkles, text: '1,000 credits per month' },
+      { icon: Search, text: 'Basic research capabilities' },
+      { icon: Globe, text: 'Standard chat modes' },
+      { icon: Users, text: 'Community support' },
+    ],
+    cta: 'Get Started Free',
+    popular: false
+  },
+  {
     id: 'lite',
     name: 'Lite',
     description: 'Standard monthly usage',
@@ -154,12 +173,14 @@ function PricingContent() {
   };
 
   const handleSubscribe = async (plan: typeof plans[0]) => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in to subscribe');
+    if (!plan.priceId) {
+      // Free plan - go to chat
+      navigate('/chat');
       return;
     }
 
-    if (!plan.priceId) {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to subscribe');
       return;
     }
 
@@ -272,8 +293,8 @@ function PricingContent() {
             </div>
           </div>
 
-          {/* Pricing Cards - Manus-style layout */}
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+          {/* Pricing Cards */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 

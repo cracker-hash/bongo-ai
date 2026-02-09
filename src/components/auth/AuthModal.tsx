@@ -45,21 +45,26 @@ export function AuthModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === 'signup') {
+      toast({
+        title: 'Signup Unavailable',
+        description: 'Signup is currently disabled. Please sign in with an existing account.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const result = mode === 'login' 
-        ? await login(email, password)
-        : await signup(email, password, name);
+      const result = await login(email, password);
 
       if (result.success) {
         toast({
-          title: mode === 'login' ? 'Welcome back!' : 'Account created!',
-          description: mode === 'login' 
-            ? 'You are now logged in to Wiser AI.' 
-            : 'Welcome to Wiser AI! Enjoy all features.',
+          title: 'Welcome back!',
+          description: 'You are now logged in to Wiser AI.',
         });
-        // Reset form
         setEmail('');
         setPassword('');
         setName('');
@@ -76,19 +81,10 @@ export function AuthModal() {
   };
 
   const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      if (!result.success) {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to sign in with Google',
-          variant: 'destructive',
-        });
-      }
-    } finally {
-      setIsGoogleLoading(false);
-    }
+    toast({
+      title: 'Coming Soon',
+      description: 'Google sign-in is temporarily unavailable. Please use email and password.',
+    });
   };
 
   const handleClose = () => {
