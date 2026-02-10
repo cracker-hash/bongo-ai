@@ -117,7 +117,7 @@ serve(async (req) => {
     console.log(`TTS request: user=${claimsData.user.id.slice(0, 8)}, text_length=${text.length}`);
 
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}?output_format=mp3_22050_32`,
       {
         method: 'POST',
         headers: {
@@ -127,7 +127,6 @@ serve(async (req) => {
         body: JSON.stringify({
           text: text.slice(0, 2000),
           model_id: 'eleven_turbo_v2_5',
-          output_format: 'mp3_22050_32',
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
