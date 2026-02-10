@@ -120,6 +120,7 @@ async function speakWithElevenLabs(options: SpeakOptions): Promise<void> {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
           text: cleanedText,
