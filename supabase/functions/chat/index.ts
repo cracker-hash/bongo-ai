@@ -65,10 +65,11 @@ serve(async (req) => {
 
     const { messages, mode = 'conversation', model, generateImage, imagePrompt, isVoice } = validationResult.data;
     
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
-    if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
+    if (!LOVABLE_API_KEY && !OPENROUTER_API_KEY && !OPENAI_API_KEY) {
       console.error("No AI API key configured");
       return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
         status: 503,
@@ -76,8 +77,20 @@ serve(async (req) => {
       });
     }
     
-    // Model mapping from frontend to OpenRouter
-    const modelMap: Record<string, string> = {
+    // Model mapping - prefer Lovable AI gateway models
+    const lovableModelMap: Record<string, string> = {
+      'gpt-4o-mini': 'google/gemini-3-flash-preview',
+      'gpt-4o': 'google/gemini-2.5-pro',
+      'gpt-4-turbo': 'openai/gpt-5-mini',
+      'claude-3.5-sonnet': 'google/gemini-2.5-pro',
+      'claude-3-opus': 'openai/gpt-5',
+      'gemini-2.0-flash': 'google/gemini-3-flash-preview',
+      'gemini-1.5-pro': 'google/gemini-2.5-pro',
+      'llama-3.3-70b': 'google/gemini-2.5-flash',
+      'deepseek-r1': 'google/gemini-2.5-pro',
+    };
+
+    const openRouterModelMap: Record<string, string> = {
       'gpt-4o-mini': 'openai/gpt-4o-mini',
       'gpt-4o': 'openai/gpt-4o',
       'gpt-4-turbo': 'openai/gpt-4-turbo',
@@ -88,8 +101,30 @@ serve(async (req) => {
       'llama-3.3-70b': 'meta-llama/llama-3.3-70b-instruct',
       'deepseek-r1': 'deepseek/deepseek-r1',
     };
+
+    // Determine which API to use: prefer Lovable AI, fallback to OpenRouter, then OpenAI
+    const useLovable = !!LOVABLE_API_KEY;
+    const useOpenRouter = !useLovable && !!OPENROUTER_API_KEY;
     
-    const selectedModel = modelMap[model || ''] || 'openai/gpt-4o-mini';
+    let apiUrl: string;
+    let apiKey: string;
+    let finalModel: string;
+    let extraHeaders: Record<string, string> = {};
+
+    if (useLovable) {
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiKey = LOVABLE_API_KEY!;
+      finalModel = lovableModelMap[model || ''] || 'google/gemini-3-flash-preview';
+    } else if (useOpenRouter) {
+      apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+      apiKey = OPENROUTER_API_KEY!;
+      finalModel = openRouterModelMap[model || ''] || 'openai/gpt-4o-mini';
+      extraHeaders = { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" };
+    } else {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      apiKey = OPENAI_API_KEY!;
+      finalModel = "gpt-4o-mini";
+    }
 
     // Handle image generation requests with Freepik API
     if (generateImage && imagePrompt) {
@@ -272,16 +307,9 @@ Answer in the SAME LANGUAGE the user uses.`
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
-    console.log(`Chat request: mode=${mode}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
+    console.log(`Chat request: mode=${mode}, model=${finalModel}, provider=${useLovable ? 'lovable' : useOpenRouter ? 'openrouter' : 'openai'}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
 
-    // Using OpenRouter API for chat with retry logic
     const maxRetries = 3;
-    const useOpenRouter = !!OPENROUTER_API_KEY;
-    const apiUrl = useOpenRouter 
-      ? "https://openrouter.ai/api/v1/chat/completions" 
-      : "https://api.openai.com/v1/chat/completions";
-    const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
-    const finalModel = useOpenRouter ? selectedModel : "gpt-4o-mini";
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -290,8 +318,7 @@ Answer in the SAME LANGUAGE the user uses.`
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
-            ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
-            ...(useOpenRouter && { "X-Title": "Wiser AI" }),
+            ...extraHeaders,
           },
           body: JSON.stringify({
             model: finalModel,
