@@ -12,13 +12,18 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
 ];
 
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  // Allow any lovable.app preview URLs
+  if (origin.endsWith('.lovable.app')) return true;
+  return ALLOWED_ORIGINS.some(o => origin === o);
+}
+
 function getCorsHeaders(origin: string | null) {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o.replace(/:\d+$/, ''))) 
-    ? origin 
-    : ALLOWED_ORIGINS[0];
+  const allowedOrigin = isAllowedOrigin(origin) ? origin! : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
     'Access-Control-Allow-Credentials': 'true',
   };
 }
