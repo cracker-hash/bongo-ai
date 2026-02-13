@@ -14,6 +14,232 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_execution_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          phase_index: number | null
+          plan_id: string | null
+          status: string
+          task_id: string
+          tool_name: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          phase_index?: number | null
+          plan_id?: string | null
+          status?: string
+          task_id: string
+          tool_name?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          phase_index?: number | null
+          plan_id?: string | null
+          status?: string
+          task_id?: string
+          tool_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_execution_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_execution_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_plans: {
+        Row: {
+          created_at: string
+          current_phase: number
+          id: string
+          phases: Json
+          revision_count: number
+          status: string
+          task_id: string
+          total_phases: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_phase?: number
+          id?: string
+          phases?: Json
+          revision_count?: number
+          status?: string
+          task_id: string
+          total_phases?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_phase?: number
+          id?: string
+          phases?: Json
+          revision_count?: number
+          status?: string
+          task_id?: string
+          total_phases?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_plans_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_schedules: {
+        Row: {
+          created_at: string
+          cron_expression: string
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          run_count: number
+          task_template: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cron_expression: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          run_count?: number
+          task_template: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cron_expression?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          run_count?: number
+          task_template?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_tasks: {
+        Row: {
+          capability: string
+          completed_at: string | null
+          context: Json | null
+          created_at: string
+          description: string | null
+          error_message: string | null
+          id: string
+          is_resumable: boolean
+          max_retries: number
+          parent_task_id: string | null
+          priority: string
+          result: Json | null
+          retry_count: number
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capability?: string
+          completed_at?: string | null
+          context?: Json | null
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          id?: string
+          is_resumable?: boolean
+          max_retries?: number
+          parent_task_id?: string | null
+          priority?: string
+          result?: Json | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capability?: string
+          completed_at?: string | null
+          context?: Json | null
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          id?: string
+          is_resumable?: boolean
+          max_retries?: number
+          parent_task_id?: string | null
+          priority?: string
+          result?: Json | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           api_key: string
