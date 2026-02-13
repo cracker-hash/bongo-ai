@@ -64,3 +64,6 @@ verify_jwt = false
 
 [functions.sync-credits]
 verify_jwt = false
+
+[functions.agent-orchestrator]
+verify_jwt = false
