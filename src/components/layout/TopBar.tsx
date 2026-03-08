@@ -1,4 +1,4 @@
-import { Menu, Moon, Sun, ChevronDown, Check, FileText } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronDown, Check, FileText, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useContext } from 'react';
