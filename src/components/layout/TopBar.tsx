@@ -10,6 +10,8 @@ import { PodcastGeneratorDialog } from '@/components/podcast/PodcastGeneratorDia
 import { NotificationsDropdown } from '@/components/layout/NotificationsDropdown';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { CreditBalance } from '@/components/credits/CreditBalance';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ManusPanel } from '@/components/manus/ManusPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
