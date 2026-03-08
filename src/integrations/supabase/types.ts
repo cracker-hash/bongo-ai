@@ -248,6 +248,8 @@ export type Database = {
           is_active: boolean
           key_name: string
           last_used_at: string | null
+          permissions: string[] | null
+          rate_limit: number | null
           requests_count: number
           user_id: string
         }
@@ -258,6 +260,8 @@ export type Database = {
           is_active?: boolean
           key_name?: string
           last_used_at?: string | null
+          permissions?: string[] | null
+          rate_limit?: number | null
           requests_count?: number
           user_id: string
         }
@@ -268,6 +272,8 @@ export type Database = {
           is_active?: boolean
           key_name?: string
           last_used_at?: string | null
+          permissions?: string[] | null
+          rate_limit?: number | null
           requests_count?: number
           user_id?: string
         }

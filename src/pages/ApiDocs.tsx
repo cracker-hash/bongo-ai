@@ -20,8 +20,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
 
-const API_BASE_URL = 'https://api.wiser.ai/v1';
-const SUPABASE_FUNCTIONS_URL = 'https://gbbqdmgrjtdliiddikwq.supabase.co/functions/v1';
+const SUPABASE_FUNCTIONS_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'gbbqdmgrjtdliiddikwq'}.supabase.co/functions/v1`;
+const API_BASE_URL = `${SUPABASE_FUNCTIONS_URL}/api-gateway`;
 
 const endpoints = [
   {
@@ -147,70 +147,54 @@ const pricingTiers = [
 ];
 
 const codeExamples = {
-  curl: `# WISER AI - Chat Completion Example
-# Replace YOUR_API_KEY with your actual API key
+  curl: `# WISER AI - API Gateway Example
+# Replace YOUR_API_KEY with your wsr_ API key
 
-curl -X POST "${SUPABASE_FUNCTIONS_URL}/chat" \\
+curl -X POST "${SUPABASE_FUNCTIONS_URL}/api-gateway" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "X-Request-ID: $(uuidgen)" \\
   -d '{
+    "endpoint": "chat/completions",
     "model": "wiser-pro",
     "messages": [
       {"role": "system", "content": "You are a helpful AI assistant."},
       {"role": "user", "content": "Explain quantum computing in simple terms."}
     ],
     "temperature": 0.7,
-    "max_tokens": 2048,
-    "stream": true
+    "max_tokens": 2048
   }'
 
-# Response will be streamed as Server-Sent Events (SSE)`,
-  javascript: `// WISER AI SDK - JavaScript/TypeScript
-// Install: npm install @wiser-ai/sdk
+# Image Generation
+curl -X POST "${SUPABASE_FUNCTIONS_URL}/api-gateway" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "endpoint": "images/generate",
+    "prompt": "A beautiful sunset over African savanna",
+    "size": "1024x1024"
+  }'`,
+  javascript: `// WISER AI - JavaScript/TypeScript Integration
+// Uses the API Gateway with your wsr_ API key
 
-import { WiserAI } from '@wiser-ai/sdk';
+const WISER_API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
-// Initialize the client
-const wiser = new WiserAI({
-  apiKey: process.env.WISER_API_KEY,
-  baseURL: '${SUPABASE_FUNCTIONS_URL}'
-});
-
-// Chat completion with streaming
+// Chat completion
 async function chat() {
-  const response = await wiser.chat.completions.create({
-    model: 'wiser-pro',
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Explain quantum computing in simple terms.' }
-    ],
-    temperature: 0.7,
-    max_tokens: 2048,
-    stream: true
-  });
-
-  // Handle streaming response
-  for await (const chunk of response) {
-    process.stdout.write(chunk.choices[0]?.delta?.content || '');
-  }
-}
-
-// Non-streaming usage with fetch
-async function chatWithFetch() {
-  const response = await fetch('${SUPABASE_FUNCTIONS_URL}/chat', {
+  const response = await fetch(WISER_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${process.env.WISER_API_KEY}\`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      endpoint: 'chat/completions',
       model: 'wiser-pro',
       messages: [
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Explain quantum computing.' }
       ],
-      stream: false
+      temperature: 0.7,
+      max_tokens: 2048
     })
   });
 
@@ -218,31 +202,41 @@ async function chatWithFetch() {
   console.log(data.choices[0].message.content);
 }
 
+// Image generation
+async function generateImage() {
+  const response = await fetch(WISER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${process.env.WISER_API_KEY}\`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      endpoint: 'images/generate',
+      prompt: 'A beautiful sunset over African savanna',
+      size: '1024x1024'
+    })
+  });
+
+  const data = await response.json();
+  console.log(data);
+}
+
 chat().catch(console.error);`,
   nodejs: `// WISER AI - Node.js Integration
-// Production-ready implementation with error handling
-
 const https = require('https');
-const { promisify } = require('util');
+
+const WISER_API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
 class WiserAIClient {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseURL = '${SUPABASE_FUNCTIONS_URL}';
   }
 
-  async chat(messages, options = {}) {
-    return new Promise((resolve, reject) => {
-      const url = new URL(\`\${this.baseURL}/chat\`);
-      
-      const payload = JSON.stringify({
-        model: options.model || 'wiser-pro',
-        messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.max_tokens || 2048,
-        stream: false
-      });
+  async request(endpoint, params = {}) {
+    const payload = JSON.stringify({ endpoint, ...params });
+    const url = new URL(WISER_API_URL);
 
+    return new Promise((resolve, reject) => {
       const req = https.request(url, {
         method: 'POST',
         headers: {
@@ -256,25 +250,25 @@ class WiserAIClient {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
-            if (res.statusCode >= 400) {
-              reject(new Error(result.error || 'API request failed'));
-            } else {
-              resolve(result);
-            }
-          } catch (e) {
-            reject(e);
-          }
+            res.statusCode >= 400 ? reject(new Error(result.error?.message || 'API error')) : resolve(result);
+          } catch (e) { reject(e); }
         });
       });
-
       req.on('error', reject);
       req.write(payload);
       req.end();
     });
   }
+
+  chat(messages, options = {}) {
+    return this.request('chat/completions', { messages, ...options });
+  }
+
+  generateImage(prompt, options = {}) {
+    return this.request('images/generate', { prompt, ...options });
+  }
 }
 
-// Usage
 const client = new WiserAIClient(process.env.WISER_API_KEY);
 
 async function main() {
@@ -282,295 +276,169 @@ async function main() {
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Explain quantum computing.' }
   ]);
-  
   console.log(response.choices[0].message.content);
 }
 
 main().catch(console.error);`,
-  express: `// WISER AI - Express.js Middleware & Routes
-// Production-ready API proxy with rate limiting and caching
-
+  express: `// WISER AI - Express.js API Proxy
 const express = require('express');
-const axios = require('axios');
 const rateLimit = require('express-rate-limit');
-const NodeCache = require('node-cache');
 
 const app = express();
 app.use(express.json());
 
-// Configuration
 const WISER_API_KEY = process.env.WISER_API_KEY;
-const API_URL = '${SUPABASE_FUNCTIONS_URL}';
+const API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 
-// Response caching
-const cache = new NodeCache({ stdTTL: 300 });
-
-// Middleware for API key validation
-const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey) {
-    return res.status(401).json({ error: 'API key required' });
-  }
-  // Add your API key validation logic here
-  next();
-};
-
-// Chat endpoint with caching
-app.post('/api/chat', limiter, validateApiKey, async (req, res) => {
+app.post('/api/chat', limiter, async (req, res) => {
   try {
-    const cacheKey = JSON.stringify(req.body);
-    const cached = cache.get(cacheKey);
-    
-    if (cached && !req.body.stream) {
-      return res.json(cached);
-    }
-
-    const response = await axios.post(\`\${API_URL}/chat\`, {
-      model: 'wiser-pro',
-      messages: req.body.messages,
-      temperature: req.body.temperature || 0.7,
-      max_tokens: req.body.max_tokens || 2048,
-      stream: false
-    }, {
+    const response = await fetch(API_URL, {
+      method: 'POST',
       headers: {
         'Authorization': \`Bearer \${WISER_API_KEY}\`,
         'Content-Type': 'application/json'
       },
-      timeout: 30000
+      body: JSON.stringify({
+        endpoint: 'chat/completions',
+        messages: req.body.messages,
+        temperature: req.body.temperature || 0.7,
+        max_tokens: req.body.max_tokens || 2048
+      })
     });
-
-    // Cache non-streaming responses
-    if (!req.body.stream) {
-      cache.set(cacheKey, response.data);
-    }
-
-    res.json(response.data);
+    const data = await response.json();
+    res.status(response.status).json(data);
   } catch (error) {
-    console.error('WISER API Error:', error.response?.data || error.message);
-    res.status(error.response?.status || 500).json({
-      error: error.response?.data?.error || 'Internal server error'
-    });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Webhook receiver
-app.post('/webhooks/wiser', express.raw({ type: 'application/json' }), (req, res) => {
-  const signature = req.headers['x-wiser-signature'];
-  // Verify signature and process webhook
-  console.log('Webhook received:', JSON.parse(req.body));
-  res.json({ received: true });
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+app.post('/api/images', limiter, async (req, res) => {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${WISER_API_KEY}\`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        endpoint: 'images/generate',
+        prompt: req.body.prompt,
+        size: req.body.size || '1024x1024'
+      })
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(\`WISER AI Proxy running on port \${PORT}\`);
-});`,
+app.listen(PORT, () => console.log(\`Proxy on port \${PORT}\`));`,
   php: `<?php
-/**
- * WISER AI - PHP SDK
- * Production-ready PHP client with PSR-7 compatibility
- */
-
+// WISER AI - PHP Client (API Gateway)
 namespace WiserAI;
 
 class Client {
     private string $apiKey;
-    private string $baseUrl = '${SUPABASE_FUNCTIONS_URL}';
+    private string $baseUrl;
     private int $timeout = 30;
 
-    public function __construct(string $apiKey) {
+    public function __construct(string $apiKey, string $baseUrl = '${SUPABASE_FUNCTIONS_URL}/api-gateway') {
         $this->apiKey = $apiKey;
+        $this->baseUrl = $baseUrl;
     }
 
-    /**
-     * Send a chat completion request
-     */
-    public function chat(array $messages, array $options = []): array {
-        $payload = [
-            'model' => $options['model'] ?? 'wiser-pro',
-            'messages' => $messages,
-            'temperature' => $options['temperature'] ?? 0.7,
-            'max_tokens' => $options['max_tokens'] ?? 2048,
-            'stream' => false
-        ];
-
-        return $this->request('POST', '/chat', $payload);
-    }
-
-    /**
-     * Generate an image from text
-     */
-    public function generateImage(string $prompt, array $options = []): array {
-        return $this->request('POST', '/images/generate', [
-            'prompt' => $prompt,
-            'size' => $options['size'] ?? '1024x1024',
-            'quality' => $options['quality'] ?? 'hd'
-        ]);
-    }
-
-    private function request(string $method, string $endpoint, array $data): array {
-        $ch = curl_init($this->baseUrl . $endpoint);
-        
+    public function request(string $endpoint, array $params = []): array {
+        $data = array_merge(['endpoint' => $endpoint], $params);
+        $ch = curl_init($this->baseUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeout,
-            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->apiKey,
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'X-Request-ID: ' . $this->generateRequestId()
+                'Content-Type: application/json'
             ],
             CURLOPT_POSTFIELDS => json_encode($data)
         ]);
-
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
         curl_close($ch);
-
-        if ($error) {
-            throw new \\Exception("cURL Error: $error");
-        }
-
         $result = json_decode($response, true);
-
-        if ($httpCode >= 400) {
-            throw new \\Exception($result['error'] ?? 'API request failed', $httpCode);
-        }
-
+        if ($httpCode >= 400) throw new \\Exception($result['error']['message'] ?? 'API error', $httpCode);
         return $result;
     }
 
-    private function generateRequestId(): string {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
+    public function chat(array $messages, array $options = []): array {
+        return $this->request('chat/completions', array_merge(['messages' => $messages], $options));
+    }
+
+    public function generateImage(string $prompt, array $options = []): array {
+        return $this->request('images/generate', array_merge(['prompt' => $prompt], $options));
     }
 }
 
-// Usage Example
+// Usage
 $wiser = new Client(getenv('WISER_API_KEY'));
-
-try {
-    $response = $wiser->chat([
-        ['role' => 'system', 'content' => 'You are a helpful assistant.'],
-        ['role' => 'user', 'content' => 'Explain quantum computing.']
-    ]);
-
-    echo $response['choices'][0]['message']['content'];
-} catch (\\Exception $e) {
-    error_log('WISER API Error: ' . $e->getMessage());
-}`,
-  java: `// WISER AI - Java SDK
-// Production-ready Java client with async support
-
+$response = $wiser->chat([
+    ['role' => 'system', 'content' => 'You are a helpful assistant.'],
+    ['role' => 'user', 'content' => 'Explain quantum computing.']
+]);
+echo $response['choices'][0]['message']['content'];
+?>`,
+  java: `// WISER AI - Java Client (API Gateway)
 import java.net.http.*;
 import java.net.URI;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 public class WiserAIClient {
-    private static final String BASE_URL = "${SUPABASE_FUNCTIONS_URL}";
+    private static final String API_URL = "${SUPABASE_FUNCTIONS_URL}/api-gateway";
     private final String apiKey;
     private final HttpClient httpClient;
-    private final Gson gson;
+    private final Gson gson = new Gson();
 
     public WiserAIClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
-        this.gson = new Gson();
+            .connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    public record Message(String role, String content) {}
-    
-    public record ChatRequest(
-        String model,
-        Message[] messages,
-        double temperature,
-        int max_tokens,
-        boolean stream
-    ) {}
+    public JsonObject request(String endpoint, Object params) throws Exception {
+        JsonObject body = gson.toJsonTree(params).getAsJsonObject();
+        body.addProperty("endpoint", endpoint);
 
-    public CompletableFuture<JsonObject> chat(Message[] messages) {
-        return chat(messages, 0.7, 2048);
-    }
-
-    public CompletableFuture<JsonObject> chat(
-        Message[] messages, 
-        double temperature, 
-        int maxTokens
-    ) {
-        var request = new ChatRequest(
-            "wiser-pro", 
-            messages, 
-            temperature, 
-            maxTokens, 
-            false
-        );
-
-        String jsonBody = gson.toJson(request);
-
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-            .uri(URI.create(BASE_URL + "/chat"))
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(API_URL))
             .header("Authorization", "Bearer " + apiKey)
             .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .timeout(Duration.ofSeconds(30))
-            .build();
+            .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+            .timeout(Duration.ofSeconds(30)).build();
 
-        return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-            .thenApply(response -> {
-                if (response.statusCode() >= 400) {
-                    throw new RuntimeException("API Error: " + response.body());
-                }
-                return gson.fromJson(response.body(), JsonObject.class);
-            });
+        HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (res.statusCode() >= 400) throw new RuntimeException("API Error: " + res.body());
+        return gson.fromJson(res.body(), JsonObject.class);
     }
 
-    public static void main(String[] args) {
-        String apiKey = System.getenv("WISER_API_KEY");
-        WiserAIClient client = new WiserAIClient(apiKey);
+    public static void main(String[] args) throws Exception {
+        var client = new WiserAIClient(System.getenv("WISER_API_KEY"));
+        var body = new JsonObject();
+        var msgs = new com.google.gson.JsonArray();
+        var msg = new JsonObject();
+        msg.addProperty("role", "user");
+        msg.addProperty("content", "Explain quantum computing.");
+        msgs.add(msg);
+        body.add("messages", msgs);
 
-        Message[] messages = {
-            new Message("system", "You are a helpful assistant."),
-            new Message("user", "Explain quantum computing in simple terms.")
-        };
-
-        client.chat(messages)
-            .thenAccept(response -> {
-                var content = response
-                    .getAsJsonArray("choices")
-                    .get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
-                System.out.println(content);
-            })
-            .exceptionally(e -> {
-                System.err.println("Error: " + e.getMessage());
-                return null;
-            })
-            .join();
+        var result = client.request("chat/completions", body);
+        System.out.println(result.getAsJsonArray("choices")
+            .get(0).getAsJsonObject()
+            .getAsJsonObject("message")
+            .get("content").getAsString());
     }
 }`
 };
@@ -1151,7 +1019,11 @@ function ApiDocsContent() {
                     All API requests require a valid API key. Include your key in the <code className="bg-muted px-1.5 py-0.5 rounded text-sm">Authorization</code> header:
                   </p>
                   <div className="bg-muted rounded-lg p-4 font-mono text-sm relative">
-                    <code>Authorization: Bearer wsk_your_api_key_here</code>
+                    <code>Authorization: Bearer wsr_your_api_key_here</code>
+                    <div className="mt-3 text-muted-foreground">
+                      <p className="mb-2">Request body must include an <code className="bg-background px-1 py-0.5 rounded">"endpoint"</code> field:</p>
+                      <pre className="text-xs">{`POST ${API_BASE_URL}\n{\n  "endpoint": "chat/completions",\n  "messages": [...]\n}`}</pre>
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1223,12 +1095,12 @@ function ApiDocsContent() {
                     </CardHeader>
                     <CardContent>
                       <div className="bg-muted rounded-lg p-3 font-mono text-sm flex items-center justify-between">
-                        <code>{API_BASE_URL}{endpoint.path}</code>
+                        <code>POST {API_BASE_URL}</code>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => copyToClipboard(`${API_BASE_URL}${endpoint.path}`, endpoint.path)}
+                          onClick={() => copyToClipboard(API_BASE_URL, endpoint.path)}
                         >
                           {copiedCode === endpoint.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         </Button>
