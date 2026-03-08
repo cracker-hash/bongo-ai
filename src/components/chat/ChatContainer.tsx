@@ -23,6 +23,7 @@ interface QuizState {
 
 export function ChatContainer() {
   const { messages, sendMessage, addAssistantMessage, currentMode, setCurrentMode, isLoading, sidebarOpen, setSidebarOpen, builderCode, builderOpen, setBuilderCode, setBuilderOpen } = useChat();
+  const { deductCredits, canAfford } = useCredits();
   const { isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
   const scrollRef = useRef<HTMLDivElement>(null);
