@@ -93,6 +93,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
     startAudioVisualization();
     
     const started = startSpeechRecognition({
+      continuous: true,
       onResult: (text) => {
         setTranscript(text);
         lastSpeechRef.current = Date.now();
@@ -108,7 +109,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
             stopAudioVisualization();
             processVoiceInput(text.trim());
           }
-        }, 2000);
+        }, 2500);
       },
       onStart: () => setIsListening(true),
       onEnd: () => {
@@ -121,11 +122,13 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
       onError: (error) => {
         setIsListening(false);
         stopAudioVisualization();
-        toast({
-          title: "Voice Error",
-          description: error,
-          variant: "destructive"
-        });
+        if (error !== 'No speech detected. Please try again.') {
+          toast({
+            title: "Voice Error",
+            description: error,
+            variant: "destructive"
+          });
+        }
       }
     });
 
