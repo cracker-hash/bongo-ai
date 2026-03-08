@@ -177,7 +177,7 @@ export function ChatContainer() {
   }
 
   const chatPanel = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative overflow-hidden">
       {!sidebarOpen && (
         <div className="lg:hidden flex items-center gap-2 p-3 border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="h-9 w-9">
