@@ -147,25 +147,32 @@ const pricingTiers = [
 ];
 
 const codeExamples = {
-  curl: `# WISER AI - Chat Completion Example
-# Replace YOUR_API_KEY with your actual API key
+  curl: `# WISER AI - API Gateway Example
+# Replace YOUR_API_KEY with your wsr_ API key
 
-curl -X POST "${SUPABASE_FUNCTIONS_URL}/chat" \\
+curl -X POST "${SUPABASE_FUNCTIONS_URL}/api-gateway" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "X-Request-ID: $(uuidgen)" \\
   -d '{
+    "endpoint": "chat/completions",
     "model": "wiser-pro",
     "messages": [
       {"role": "system", "content": "You are a helpful AI assistant."},
       {"role": "user", "content": "Explain quantum computing in simple terms."}
     ],
     "temperature": 0.7,
-    "max_tokens": 2048,
-    "stream": true
+    "max_tokens": 2048
   }'
 
-# Response will be streamed as Server-Sent Events (SSE)`,
+# Image Generation
+curl -X POST "${SUPABASE_FUNCTIONS_URL}/api-gateway" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "endpoint": "images/generate",
+    "prompt": "A beautiful sunset over African savanna",
+    "size": "1024x1024"
+  }'`,
   javascript: `// WISER AI SDK - JavaScript/TypeScript
 // Install: npm install @wiser-ai/sdk
 
