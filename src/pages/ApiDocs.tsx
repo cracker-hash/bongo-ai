@@ -20,8 +20,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import wiserLogo from '@/assets/wiser-ai-logo.png';
 
-const API_BASE_URL = 'https://api.wiser.ai/v1';
-const SUPABASE_FUNCTIONS_URL = 'https://gbbqdmgrjtdliiddikwq.supabase.co/functions/v1';
+const SUPABASE_FUNCTIONS_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'gbbqdmgrjtdliiddikwq'}.supabase.co/functions/v1`;
+const API_BASE_URL = `${SUPABASE_FUNCTIONS_URL}/api-gateway`;
 
 const endpoints = [
   {
