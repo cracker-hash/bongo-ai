@@ -331,10 +331,13 @@ export function ChatBubble({ message, onRegenerate }: ChatBubbleProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("action-btn h-8 w-8", (isSpeaking || isLoadingTTS) && "text-primary")}
+              className={cn(
+                "action-btn h-8 w-8",
+                isSpeaking && "text-primary bg-primary/10",
+                isLoadingTTS && "text-muted-foreground animate-pulse"
+              )}
               onClick={handleSpeak}
-              title={isSpeaking ? "Stop reading" : isLoadingTTS ? "Loading..." : "Read aloud"}
-              disabled={isLoadingTTS}
+              title={isSpeaking ? "Stop reading" : isLoadingTTS ? "Loading audio..." : "Read aloud"}
             >
               {isLoadingTTS ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
