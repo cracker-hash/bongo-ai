@@ -67,3 +67,6 @@ verify_jwt = false
 
 [functions.agent-orchestrator]
 verify_jwt = false
+
+[functions.api-gateway]
+verify_jwt = false
