@@ -323,7 +323,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
   const isActive = isListening || isSpeaking || isProcessing;
 
   return (
-    <div className="voice-conversation-overlay fixed inset-0 z-50 md:absolute md:inset-0 flex flex-col items-center justify-between overflow-hidden">
+    <div className="voice-conversation-overlay fixed top-16 inset-x-0 bottom-0 z-50 md:absolute md:top-0 md:inset-0 flex flex-col items-center justify-between overflow-hidden">
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-[hsl(220,30%,8%)] via-[hsl(260,40%,15%)] to-[hsl(210,60%,10%)]" />
       
