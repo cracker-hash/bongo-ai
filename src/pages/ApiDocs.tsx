@@ -337,18 +337,17 @@ app.post('/api/images', limiter, async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(\`Proxy on port \${PORT}\`));`,
-  php: `<?php
+  php: \`<?php
 /**
- * WISER AI - PHP SDK
- * Production-ready PHP client with PSR-7 compatibility
+ * WISER AI - PHP Client (API Gateway)
  */
 
 namespace WiserAI;
 
 class Client {
-    private string $apiKey;
-    private string $baseUrl = '${SUPABASE_FUNCTIONS_URL}';
-    private int $timeout = 30;
+    private string \$apiKey;
+    private string \$baseUrl = '\${SUPABASE_FUNCTIONS_URL}/api-gateway';
+    private int \$timeout = 30;
 
     public function __construct(string $apiKey) {
         $this->apiKey = $apiKey;
