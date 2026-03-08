@@ -7,16 +7,8 @@ export type ChatMode =
   | 'creative'
   | 'coding';
 
-export type AIModel = 
-  | 'gpt-4o-mini'
-  | 'gpt-4o'
-  | 'gpt-4-turbo'
-  | 'claude-3.5-sonnet'
-  | 'claude-3-opus'
-  | 'gemini-2.0-flash'
-  | 'gemini-1.5-pro'
-  | 'llama-3.3-70b'
-  | 'deepseek-r1';
+
+
 
 export interface MessageImage {
   url: string;

@@ -429,7 +429,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await streamChat({
       messages: aiMessages,
       mode: currentMode,
-      model: currentModel,
       onDelta: (chunk) => {
         streamingMessageRef.current += chunk;
         setMessages(prev => prev.map(m => 
