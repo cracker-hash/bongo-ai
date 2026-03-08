@@ -123,7 +123,7 @@ export function CreditBalance({ showProgress = false, compact = false }: CreditB
       
       <div className="flex justify-between text-xs text-muted-foreground">
         <span className="capitalize">{tier} Tier</span>
-        <span>{balance.toLocaleString()} / {maxCredits === 500000 ? '∞' : maxCredits.toLocaleString()}</span>
+        <span>{balance.toLocaleString()} / {maxCredits.toLocaleString()}</span>
       </div>
     </div>
   );
