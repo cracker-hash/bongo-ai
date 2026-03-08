@@ -639,7 +639,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                   <p className="text-sm text-muted-foreground mb-4">
                     Connect Wiser AI to custom Model Context Protocol servers
                   </p>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => toast.info('MCP connections coming soon!')}>
                     <Plus className="h-4 w-4" />
                     Add MCP Connection
                   </Button>

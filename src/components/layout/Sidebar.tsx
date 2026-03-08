@@ -358,10 +358,13 @@ export function Sidebar() {
                         />
                       </button>
                     ))}
-                    {allImages.length > 9 && (
-                      <div className="aspect-square rounded-md bg-sidebar-accent/50 flex items-center justify-center text-xs text-muted-foreground">
+                {allImages.length > 9 && (
+                      <button 
+                        className="aspect-square rounded-md bg-sidebar-accent/50 flex items-center justify-center text-xs text-muted-foreground hover:bg-sidebar-accent transition-colors"
+                        onClick={() => navigate('/gallery')}
+                      >
                         +{allImages.length - 9}
-                      </div>
+                      </button>
                     )}
                   </div>
                 ) : (
@@ -372,6 +375,15 @@ export function Sidebar() {
                     </p>
                   </div>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 h-8 px-2 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/60 mt-1"
+                  onClick={() => navigate('/gallery')}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span className="text-xs">View Gallery</span>
+                </Button>
               </CollapsibleContent>
             </Collapsible>
 
