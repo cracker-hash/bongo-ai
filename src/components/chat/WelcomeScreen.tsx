@@ -607,7 +607,10 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                 </p>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors text-left">
+                  <button 
+                    className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors text-left"
+                    onClick={() => toast.info('Custom API integration coming soon!')}
+                  >
                     <Plus className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium text-sm">Add custom API</span>
                   </button>
