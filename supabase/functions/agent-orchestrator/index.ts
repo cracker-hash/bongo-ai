@@ -235,18 +235,18 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     
-    // Use anon-key client for auth validation (handles ES256 tokens properly)
+    // Use anon-key client with getClaims for proper signing-keys JWT validation
     const authClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: userData, error: userError } = await authClient.auth.getUser(token);
-    if (userError || !userData.user) throw new Error("Authentication failed");
-    const userId = userData.user.id;
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) throw new Error("Authentication failed");
+    const userId = claimsData.claims.sub as string;
 
     const { action, taskId, input, capability } = await req.json();
 
