@@ -223,29 +223,20 @@ async function generateImage() {
 
 chat().catch(console.error);`,
   nodejs: `// WISER AI - Node.js Integration
-// Production-ready implementation with error handling
-
 const https = require('https');
-const { promisify } = require('util');
+
+const WISER_API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
 class WiserAIClient {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseURL = '${SUPABASE_FUNCTIONS_URL}';
   }
 
-  async chat(messages, options = {}) {
-    return new Promise((resolve, reject) => {
-      const url = new URL(\`\${this.baseURL}/chat\`);
-      
-      const payload = JSON.stringify({
-        model: options.model || 'wiser-pro',
-        messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.max_tokens || 2048,
-        stream: false
-      });
+  async request(endpoint, params = {}) {
+    const payload = JSON.stringify({ endpoint, ...params });
+    const url = new URL(WISER_API_URL);
 
+    return new Promise((resolve, reject) => {
       const req = https.request(url, {
         method: 'POST',
         headers: {
@@ -259,25 +250,25 @@ class WiserAIClient {
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
-            if (res.statusCode >= 400) {
-              reject(new Error(result.error || 'API request failed'));
-            } else {
-              resolve(result);
-            }
-          } catch (e) {
-            reject(e);
-          }
+            res.statusCode >= 400 ? reject(new Error(result.error?.message || 'API error')) : resolve(result);
+          } catch (e) { reject(e); }
         });
       });
-
       req.on('error', reject);
       req.write(payload);
       req.end();
     });
   }
+
+  chat(messages, options = {}) {
+    return this.request('chat/completions', { messages, ...options });
+  }
+
+  generateImage(prompt, options = {}) {
+    return this.request('images/generate', { prompt, ...options });
+  }
 }
 
-// Usage
 const client = new WiserAIClient(process.env.WISER_API_KEY);
 
 async function main() {
@@ -285,7 +276,6 @@ async function main() {
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Explain quantum computing.' }
   ]);
-  
   console.log(response.choices[0].message.content);
 }
 
