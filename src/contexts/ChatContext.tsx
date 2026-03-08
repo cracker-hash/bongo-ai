@@ -45,6 +45,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
+  const [builderCode, setBuilderCode] = useState<string | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const streamingMessageRef = useRef<string>('');
 
   const { user, isAuthenticated } = useAuth();
