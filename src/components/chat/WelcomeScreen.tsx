@@ -175,6 +175,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
   const { isAuthenticated, setShowAuthModal, user } = useAuth();
+  const { setBuilderOpen, setCurrentMode } = useChat();
   const navigate = useNavigate();
   const [showConnectors, setShowConnectors] = useState(false);
   const [connectorSearch, setConnectorSearch] = useState('');
