@@ -89,6 +89,13 @@ export function TopBar() {
   const [showPodcastDialog, setShowPodcastDialog] = useState(false);
   const [showAgentPanel, setShowAgentPanel] = useState(false);
 
+  // Listen for custom event to open ManusPanel from WelcomeScreen
+  useEffect(() => {
+    const handler = () => setShowAgentPanel(true);
+    window.addEventListener('open-manus-panel', handler);
+    return () => window.removeEventListener('open-manus-panel', handler);
+  }, []);
+
   // Initialize theme from localStorage or system preference
   useEffect(() => {
     const stored = localStorage.getItem('wiser_theme');
