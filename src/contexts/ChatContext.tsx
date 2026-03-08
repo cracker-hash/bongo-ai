@@ -11,14 +11,12 @@ import { toast } from 'sonner';
 interface ChatContextType {
   messages: Message[];
   currentMode: ChatMode;
-  currentModel: AIModel;
   chats: StoredChat[];
   currentChatId: string | null;
   sidebarOpen: boolean;
   isLoading: boolean;
   isLoadingChats: boolean;
   setCurrentMode: (mode: ChatMode) => void;
-  setCurrentModel: (model: AIModel) => void;
   sendMessage: (content: string, images?: string[], document?: DocumentAttachment) => Promise<void>;
   addAssistantMessage: (content: string) => void;
   clearMessages: () => void;
