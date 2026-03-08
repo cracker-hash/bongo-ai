@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
-import { Message, ChatMode, AIModel, MessageImage, DocumentAttachment } from '@/types/chat';
+import { Message, ChatMode, MessageImage, DocumentAttachment } from '@/types/chat';
 import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
