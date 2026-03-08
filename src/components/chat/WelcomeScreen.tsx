@@ -486,9 +486,34 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
           </div>
         )}
 
-        {/* Default ads slider when no tool selected */}
+        {/* EdTech Learning Modes */}
         {selectedTool === 'default' && (
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 space-y-4">
+            <span className="text-sm font-medium text-foreground">Learning Modes</span>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { label: 'Study Mode', icon: '📚', prompt: 'Help me study and create a learning plan for: ', mode: 'study' as ChatMode, color: 'from-emerald-500/20 to-emerald-500/5' },
+                { label: 'Quiz Me', icon: '🧠', prompt: 'Quiz me on ', mode: 'quiz' as ChatMode, color: 'from-amber-500/20 to-amber-500/5' },
+                { label: 'Research', icon: '🔬', prompt: 'Research and explain in depth: ', mode: 'research' as ChatMode, color: 'from-purple-500/20 to-purple-500/5' },
+                { label: 'Play & Learn', icon: '🎮', prompt: 'Let\'s play an educational game about ', mode: 'game' as ChatMode, color: 'from-pink-500/20 to-pink-500/5' },
+                { label: 'Learn to Code', icon: '💻', prompt: 'Teach me how to code in ', mode: 'coding' as ChatMode, color: 'from-green-500/20 to-green-500/5' },
+                { label: 'Creative Writing', icon: '✍️', prompt: 'Help me write creatively about ', mode: 'creative' as ChatMode, color: 'from-orange-500/20 to-orange-500/5' },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors text-left",
+                    `bg-gradient-to-br ${item.color}`
+                  )}
+                  onClick={() => onPromptClick(item.prompt, item.mode)}
+                >
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-sm font-medium text-foreground">{item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Ads slider */}
             <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-4">
               <div className="flex-1">
                 <h3 className="font-medium text-foreground mb-1">{adSlides[adSlideIndex].title}</h3>
@@ -501,7 +526,6 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
               </div>
             </div>
 
-            {/* Carousel dots */}
             <div className="flex justify-center gap-2">
               {adSlides.map((_, index) => (
                 <button

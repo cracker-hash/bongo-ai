@@ -180,6 +180,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const sendMessage = useCallback(async (content: string, images?: string[], document?: DocumentAttachment) => {
     const lowerContent = content.toLowerCase();
     
+    // Auto-detect quiz intent and switch to quiz mode
+    const isQuizIntent = lowerContent.startsWith('quiz me on') || 
+                         lowerContent.startsWith('quiz me about') ||
+                         lowerContent.includes('quiz me on ') ||
+                         lowerContent.includes('test me on ') ||
+                         lowerContent.includes('test my knowledge');
+    
+    if (isQuizIntent && currentMode !== 'quiz') {
+      setCurrentMode('quiz');
+    }
+    
     // Check request types
     const isImageGenRequest = lowerContent.startsWith('generate an image:') || 
                               lowerContent.startsWith('create an image:') ||

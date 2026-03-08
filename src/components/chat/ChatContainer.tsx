@@ -111,12 +111,24 @@ export function ChatContainer() {
     } : undefined;
 
     if (currentMode === 'quiz' && docAttachment && isAuthenticated) {
+      if (!canAfford('document_processing')) {
+        toast.error('Not enough credits for document processing (15 credits)');
+        return;
+      }
+      await deductCredits('document_processing', undefined, 'Document processing for quiz (15 credits)');
       await sendMessage(content || `📄 Uploaded: ${docAttachment.filename}`, images, docAttachment);
       await processDocumentForQuiz(docAttachment);
       return;
     }
 
     if (currentMode === 'study' && docAttachment) {
+      if (isAuthenticated && !canAfford('document_processing')) {
+        toast.error('Not enough credits for document processing (15 credits)');
+        return;
+      }
+      if (isAuthenticated) {
+        await deductCredits('document_processing', undefined, 'Document processing for study (15 credits)');
+      }
       setIsProcessingDocument(true);
       await sendMessage(content || `📄 Analyzing: ${docAttachment.filename}`, images, docAttachment);
       const analysis = await processDocumentForStudy(docAttachment);
