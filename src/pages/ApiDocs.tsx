@@ -389,100 +389,56 @@ $response = $wiser->chat([
 ]);
 echo $response['choices'][0]['message']['content'];
 ?>`,
-  java: `// WISER AI - Java SDK
-// Production-ready Java client with async support
-
+  java: `// WISER AI - Java Client (API Gateway)
 import java.net.http.*;
 import java.net.URI;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 public class WiserAIClient {
-    private static final String BASE_URL = "${SUPABASE_FUNCTIONS_URL}";
+    private static final String API_URL = "${SUPABASE_FUNCTIONS_URL}/api-gateway";
     private final String apiKey;
     private final HttpClient httpClient;
-    private final Gson gson;
+    private final Gson gson = new Gson();
 
     public WiserAIClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
-        this.gson = new Gson();
+            .connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    public record Message(String role, String content) {}
-    
-    public record ChatRequest(
-        String model,
-        Message[] messages,
-        double temperature,
-        int max_tokens,
-        boolean stream
-    ) {}
+    public JsonObject request(String endpoint, Object params) throws Exception {
+        JsonObject body = gson.toJsonTree(params).getAsJsonObject();
+        body.addProperty("endpoint", endpoint);
 
-    public CompletableFuture<JsonObject> chat(Message[] messages) {
-        return chat(messages, 0.7, 2048);
-    }
-
-    public CompletableFuture<JsonObject> chat(
-        Message[] messages, 
-        double temperature, 
-        int maxTokens
-    ) {
-        var request = new ChatRequest(
-            "wiser-pro", 
-            messages, 
-            temperature, 
-            maxTokens, 
-            false
-        );
-
-        String jsonBody = gson.toJson(request);
-
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-            .uri(URI.create(BASE_URL + "/chat"))
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(API_URL))
             .header("Authorization", "Bearer " + apiKey)
             .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .timeout(Duration.ofSeconds(30))
-            .build();
+            .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+            .timeout(Duration.ofSeconds(30)).build();
 
-        return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-            .thenApply(response -> {
-                if (response.statusCode() >= 400) {
-                    throw new RuntimeException("API Error: " + response.body());
-                }
-                return gson.fromJson(response.body(), JsonObject.class);
-            });
+        HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (res.statusCode() >= 400) throw new RuntimeException("API Error: " + res.body());
+        return gson.fromJson(res.body(), JsonObject.class);
     }
 
-    public static void main(String[] args) {
-        String apiKey = System.getenv("WISER_API_KEY");
-        WiserAIClient client = new WiserAIClient(apiKey);
+    public static void main(String[] args) throws Exception {
+        var client = new WiserAIClient(System.getenv("WISER_API_KEY"));
+        var body = new JsonObject();
+        var msgs = new com.google.gson.JsonArray();
+        var msg = new JsonObject();
+        msg.addProperty("role", "user");
+        msg.addProperty("content", "Explain quantum computing.");
+        msgs.add(msg);
+        body.add("messages", msgs);
 
-        Message[] messages = {
-            new Message("system", "You are a helpful assistant."),
-            new Message("user", "Explain quantum computing in simple terms.")
-        };
-
-        client.chat(messages)
-            .thenAccept(response -> {
-                var content = response
-                    .getAsJsonArray("choices")
-                    .get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
-                System.out.println(content);
-            })
-            .exceptionally(e -> {
-                System.err.println("Error: " + e.getMessage());
-                return null;
-            })
-            .join();
+        var result = client.request("chat/completions", body);
+        System.out.println(result.getAsJsonArray("choices")
+            .get(0).getAsJsonObject()
+            .getAsJsonObject("message")
+            .get("content").getAsString());
     }
 }`
 };
