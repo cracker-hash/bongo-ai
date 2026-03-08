@@ -38,7 +38,6 @@ const getIsMobile = () => typeof window !== 'undefined' && window.innerWidth < 1
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMode, setCurrentMode] = useState<ChatMode>('conversation');
-  const [currentModel, setCurrentModel] = useState<AIModel>('gpt-4o-mini');
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
