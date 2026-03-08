@@ -1151,7 +1151,11 @@ function ApiDocsContent() {
                     All API requests require a valid API key. Include your key in the <code className="bg-muted px-1.5 py-0.5 rounded text-sm">Authorization</code> header:
                   </p>
                   <div className="bg-muted rounded-lg p-4 font-mono text-sm relative">
-                    <code>Authorization: Bearer wsk_your_api_key_here</code>
+                    <code>Authorization: Bearer wsr_your_api_key_here</code>
+                    <div className="mt-3 text-muted-foreground">
+                      <p className="mb-2">Request body must include an <code className="bg-background px-1 py-0.5 rounded">"endpoint"</code> field:</p>
+                      <pre className="text-xs">{`POST ${API_BASE_URL}\n{\n  "endpoint": "chat/completions",\n  "messages": [...]\n}`}</pre>
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
