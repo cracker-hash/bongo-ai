@@ -308,6 +308,10 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
               )}
             </ScrollArea>
           </TabsContent>
+
+          <TabsContent value="schedules">
+            <SchedulesPanel />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
