@@ -578,6 +578,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                     <button
                       key={index}
                       className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 transition-colors text-left"
+                      onClick={() => handleConnectorClick(connector.name)}
                     >
                       <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
                         {typeof connector.icon === 'string' ? (
