@@ -4,7 +4,7 @@ import { CreditBalance } from './CreditBalance';
 import { CreditHistory } from './CreditHistory';
 import { CreditCosts } from './CreditCosts';
 import { useCredits } from '@/hooks/useCredits';
-import { FREE_TIER_DAILY_CREDITS, TIER_MONTHLY_CREDITS } from '@/lib/creditConfig';
+import { TIER_DAILY_CREDITS } from '@/lib/creditConfig';
 import { RefreshCw, Sparkles, Zap, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,29 +17,29 @@ export function CreditsDashboard() {
       icon: <Zap className="h-5 w-5" />,
       color: 'text-muted-foreground',
       bgColor: 'bg-muted',
-      allocation: `${FREE_TIER_DAILY_CREDITS} credits/day`,
+      allocation: `${TIER_DAILY_CREDITS.free} credits/day`,
       description: 'Daily credits reset at midnight UTC',
     },
     lite: {
       icon: <Sparkles className="h-5 w-5" />,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
-      allocation: `${TIER_MONTHLY_CREDITS.lite.toLocaleString()} credits/month`,
-      description: 'Monthly allocation with rollover',
+      allocation: `${TIER_DAILY_CREDITS.lite.toLocaleString()} credits/day`,
+      description: 'Daily allocation, resets at midnight UTC',
     },
     pro: {
       icon: <Crown className="h-5 w-5" />,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
-      allocation: `${TIER_MONTHLY_CREDITS.pro.toLocaleString()} credits/month`,
-      description: 'High volume for power users',
+      allocation: `${TIER_DAILY_CREDITS.pro.toLocaleString()} credits/day`,
+      description: 'High volume daily allocation',
     },
     max: {
       icon: <Crown className="h-5 w-5" />,
       color: 'text-amber-500',
       bgColor: 'bg-amber-500/10',
-      allocation: `${TIER_MONTHLY_CREDITS.max.toLocaleString()} credits/month`,
-      description: 'Effectively unlimited usage',
+      allocation: `${TIER_DAILY_CREDITS.max.toLocaleString()} credits/day`,
+      description: 'Maximum daily allocation',
     },
   };
 

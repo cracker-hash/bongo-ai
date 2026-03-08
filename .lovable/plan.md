@@ -1,72 +1,45 @@
 
 
-## Plan: Daily Credit Reset at Midnight UTC (All Tiers)
+## Plan: Add New API Key, Remove AI Model Dropdown, Fix Errors
 
-### Problem
-Currently, only the **free tier** gets a daily reset (and only client-side on page load -- unreliable). Paid tiers (lite/pro/max) only get credits on subscription change, with no recurring allocation. There's no server-side mechanism to guarantee credits reset at midnight.
+### 1. Remove AI Model Dropdown from ChatInput
 
-### Solution
+The `ChatInput.tsx` component (lines 518-547) has a "Model Dropdown" that lets users pick AI models (GPT-4o, Claude, Gemini, etc.). This will be completely removed.
 
-**1. Update credit allocations to be daily for all tiers**
+**Changes to `src/components/chat/ChatInput.tsx`:**
+- Remove the Model Dropdown section (lines 518-547)
+- Remove unused imports: `MODEL_INFO`, `AIModel` from `@/types/chat` (line 26)
+- Remove the `models` variable (line 310)
+- Remove `currentModel` and `setCurrentModel` from the `useChat()` destructuring (line 89)
 
-Update `src/lib/creditConfig.ts`:
-- Free: 200/day (unchanged)
-- Lite: 500/day (15,000 ÷ 30)
-- Pro: 1,666/day (50,000 ÷ 30)
-- Max: 16,666/day (500,000 ÷ 30)
+### 2. Fix TopBar `useChatSafe` to Use Context Directly
 
-Add a new `TIER_DAILY_CREDITS` map that all reset logic uses.
+The `TopBar.tsx` uses `require()` which can fail in Vite/ESM. It should use the exported `ChatContext` with `useContext` like the Sidebar does.
 
-**2. Create `reset-daily-credits` edge function**
+**Changes to `src/components/layout/TopBar.tsx`:**
+- Import `ChatContext` from `@/contexts/ChatContext` and `useContext` from React
+- Replace the `require`-based `useChatSafe` with a context-based version that returns defaults when outside the provider
 
-New edge function that:
-- Queries all `user_credits` rows where `last_daily_reset < today midnight UTC`
-- Resets each user's balance to their tier's daily allocation
-- Logs a `daily_reset` transaction in `credit_transactions`
-- Uses service role key (no auth needed, called by cron)
+### 3. Add API Key Management Access
 
-**3. Add pg_cron job for midnight UTC**
+The API Key management already exists at `src/components/apikeys/ApiKeyManagement.tsx` and is accessible via the Dashboard page (`/dashboard` -> "API Keys" tab). The request is to make it easier to create a new API key. We'll add a quick-access button/link in the Dashboard or ensure the flow is smooth.
 
-```sql
-SELECT cron.schedule(
-  'reset-daily-credits',
-  '0 0 * * *',  -- midnight UTC
-  $$ SELECT net.http_post(...) $$
-);
-```
+Since the `ApiKeyManagement` component already has full CRUD functionality (create, view, delete API keys), no database changes are needed. The feature is already working -- we just need to ensure it's accessible without errors.
 
-**4. Update client-side reset logic**
+### Technical Details
 
-Update `useCredits.ts` `fetchCredits` to check daily reset for **all tiers** (not just free), using each tier's daily allocation. This serves as a fallback if the user loads the app after midnight but before the cron ran.
+**File: `src/components/chat/ChatInput.tsx`**
+- Remove `MODEL_INFO, AIModel` from import on line 26
+- Remove `currentModel, setCurrentModel` from useChat() on line 89
+- Remove `const models = ...` on line 310
+- Delete the entire Model Dropdown block (lines 518-547)
 
-**5. Update `sync-credits` edge function**
+**File: `src/components/layout/TopBar.tsx`**
+- Replace the `useChatSafe` function (lines 26-34) to use `ChatContext` with `useContext` instead of `require`
+- Import `ChatContext` and `useContext`
 
-Align with daily model -- when tier changes, set balance to the new tier's daily allocation instead of monthly.
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/lib/creditConfig.ts` | Add `TIER_DAILY_CREDITS` map, update helpers |
-| `src/hooks/useCredits.ts` | Reset all tiers daily (not just free) |
-| `supabase/functions/reset-daily-credits/index.ts` | New edge function for bulk midnight reset |
-| `supabase/config.toml` | Register new function |
-| `supabase/functions/sync-credits/index.ts` | Use daily allocations |
-| `src/components/credits/CreditBalance.tsx` | Update maxCredits to use daily values |
-| DB (via insert tool) | Add pg_cron job for midnight |
-
-### Flow
-
-```text
-Midnight UTC
-  └─ pg_cron fires
-       └─ net.http_post → /reset-daily-credits
-            └─ For each user where last_daily_reset < today:
-                 ├─ UPDATE user_credits SET balance = tier_daily, last_daily_reset = now()
-                 └─ INSERT credit_transactions (daily_reset)
-
-User opens app (fallback)
-  └─ useCredits.fetchCredits()
-       └─ If last_daily_reset < today midnight → reset balance client-side
-```
+### Error Prevention
+- Both Sidebar and TopBar will use the same safe pattern: check if `ChatContext` is undefined and return defaults
+- No `require()` calls which can break in Vite ESM builds
+- The AI model selection is cleanly removed without leaving orphan references
 
