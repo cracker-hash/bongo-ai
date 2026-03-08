@@ -1,45 +1,56 @@
 
 
-## Plan: Add New API Key, Remove AI Model Dropdown, Fix Errors
+## Plan: Fix Connectors & Images
 
-### 1. Remove AI Model Dropdown from ChatInput
+### Current State
 
-The `ChatInput.tsx` component (lines 518-547) has a "Model Dropdown" that lets users pick AI models (GPT-4o, Claude, Gemini, etc.). This will be completely removed.
+**Images**: The full pipeline exists -- `generateImage()` in `streamChat.ts` calls the `chat` edge function, which uses Freepik Mystic API. Images auto-save to `generated_images` table. Gallery page at `/gallery` works. The `FREEPIK_API_KEY` secret is configured. **However**, the table has zero rows, suggesting either no one has tested it or the Freepik API is failing silently. The image gen flow itself is correctly wired end-to-end in code.
 
-**Changes to `src/components/chat/ChatInput.tsx`:**
-- Remove the Model Dropdown section (lines 518-547)
-- Remove unused imports: `MODEL_INFO`, `AIModel` from `@/types/chat` (line 26)
-- Remove the `models` variable (line 310)
-- Remove `currentModel` and `setCurrentModel` from the `useChat()` destructuring (line 89)
+**Connectors**: The WelcomeScreen connector modal (Apps/Custom API/MCP tabs) is entirely static UI -- clicking any connector button does nothing. The `ConnectedAccounts` page (`/connected-accounts`) has real Google OAuth integration via the `google-oauth` edge function, but the WelcomeScreen modal doesn't link to it. The "More" tools dropdown items also do nothing on click (they just close the popover).
 
-### 2. Fix TopBar `useChatSafe` to Use Context Directly
+### What Needs Fixing
 
-The `TopBar.tsx` uses `require()` which can fail in Vite/ESM. It should use the exported `ChatContext` with `useContext` like the Sidebar does.
+**1. Connectors modal buttons are non-functional**
+Every connector button in the WelcomeScreen modal is a dead `<button>` with no `onClick`. We need to:
+- Wire the "My Browser", "Gmail", "Google Drive" buttons to navigate to `/connected-accounts` or trigger the OAuth flow
+- Wire "Slack" and "Notion" to show a "coming soon" toast
+- Wire the "Connect" button on the featured browser connector
+- Wire the "Add custom API" button to show a toast or open a dialog
 
-**Changes to `src/components/layout/TopBar.tsx`:**
-- Import `ChatContext` from `@/contexts/ChatContext` and `useContext` from React
-- Replace the `require`-based `useChatSafe` with a context-based version that returns defaults when outside the provider
+**2. "More" tools dropdown items are non-functional**
+Each item in the "More" popover (`Schedule task`, `Wide Research`, `Spreadsheet`, etc.) just closes the popover without doing anything. We need to:
+- "Schedule task" → open the ManusPanel (agent schedules)
+- "Wide Research" → send a prompt with research mode hint
+- "Chat mode" → switch to conversation mode
+- Others (Spreadsheet, Visualization, Video, Audio, Playbook) → send appropriate prompts to the chat
 
-### 3. Add API Key Management Access
+**3. Image generation gallery link missing from sidebar/nav**
+The Gallery page exists at `/gallery` but there's no visible nav link to reach it (users have to know the URL). We should add a Gallery link in the Sidebar.
 
-The API Key management already exists at `src/components/apikeys/ApiKeyManagement.tsx` and is accessible via the Dashboard page (`/dashboard` -> "API Keys" tab). The request is to make it easier to create a new API key. We'll add a quick-access button/link in the Dashboard or ensure the flow is smooth.
+### Implementation Details
 
-Since the `ApiKeyManagement` component already has full CRUD functionality (create, view, delete API keys), no database changes are needed. The feature is already working -- we just need to ensure it's accessible without errors.
+**File: `src/components/chat/WelcomeScreen.tsx`**
+- Add `useNavigate` from react-router-dom
+- Add `onClick` handlers to connector buttons: Gmail/Google Drive → `navigate('/connected-accounts')`, others → toast "Coming soon"
+- Add `onClick` handlers to "More" tools: map each to a prompt submission or navigation action
+- Pass through the necessary callbacks (e.g., `onPromptClick` for tools that should send prompts)
 
-### Technical Details
+**File: `src/components/layout/Sidebar.tsx`**
+- Add a Gallery link (Image icon) to the sidebar navigation, linking to `/gallery`
 
-**File: `src/components/chat/ChatInput.tsx`**
-- Remove `MODEL_INFO, AIModel` from import on line 26
-- Remove `currentModel, setCurrentModel` from useChat() on line 89
-- Remove `const models = ...` on line 310
-- Delete the entire Model Dropdown block (lines 518-547)
+**No database changes needed** -- all tables and edge functions already exist and are correctly wired.
 
-**File: `src/components/layout/TopBar.tsx`**
-- Replace the `useChatSafe` function (lines 26-34) to use `ChatContext` with `useContext` instead of `require`
-- Import `ChatContext` and `useContext`
+### Summary of Changes
 
-### Error Prevention
-- Both Sidebar and TopBar will use the same safe pattern: check if `ChatContext` is undefined and return defaults
-- No `require()` calls which can break in Vite ESM builds
-- The AI model selection is cleanly removed without leaving orphan references
+| Item | Fix |
+|------|-----|
+| Connector buttons (Apps tab) | Gmail/Drive → navigate to `/connected-accounts`; others → "Coming soon" toast |
+| Featured "My Browser" Connect | Toast "Coming soon" |
+| "Add custom API" button | Toast "Coming soon" |
+| "Add MCP Connection" button | Toast "Coming soon" |
+| "More" → Schedule task | Open ManusPanel sheet |
+| "More" → Wide Research | Send research prompt via `onPromptClick` |
+| "More" → Chat mode | Send conversation prompt |
+| "More" → Others | Send contextual prompts |
+| Gallery nav link | Add to Sidebar |
 
