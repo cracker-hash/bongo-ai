@@ -53,8 +53,8 @@ export function useAgentSchedules() {
           name,
           description: description || null,
           cron_expression: cronExpression,
-          task_template: { input: taskInput, capability } as unknown as Record<string, unknown>,
-        })
+          task_template: JSON.parse(JSON.stringify({ input: taskInput, capability })),
+        } as any)
         .select()
         .single();
       if (error) throw error;
