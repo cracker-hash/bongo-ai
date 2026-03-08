@@ -62,6 +62,18 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
     }
   }, [isAuthenticated, loadTasks]);
 
+  // Auto-refresh selected task detail when tasks update
+  useEffect(() => {
+    if (selectedTask) {
+      const updated = tasks.find((t) => t.id === selectedTask.id);
+      if (updated && updated.updated_at !== selectedTask.updated_at) {
+        getTaskDetail(updated.id).then((detail) => {
+          if (detail) setSelectedTask(detail);
+        });
+      }
+    }
+  }, [tasks, selectedTask, getTaskDetail]);
+
   const handleCreate = async () => {
     if (!input.trim()) return;
     const result = await createTask(input);
