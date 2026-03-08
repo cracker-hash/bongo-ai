@@ -4,7 +4,7 @@ import { CreditBalance } from './CreditBalance';
 import { CreditHistory } from './CreditHistory';
 import { CreditCosts } from './CreditCosts';
 import { useCredits } from '@/hooks/useCredits';
-import { FREE_TIER_DAILY_CREDITS, TIER_MONTHLY_CREDITS } from '@/lib/creditConfig';
+import { TIER_DAILY_CREDITS } from '@/lib/creditConfig';
 import { RefreshCw, Sparkles, Zap, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
