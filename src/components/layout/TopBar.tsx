@@ -128,9 +128,9 @@ export function TopBar() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/95 backdrop-blur-xl border-b border-border">
-        <div className="flex items-center justify-between h-full px-4">
+        <div className="flex items-center justify-between h-full px-2 sm:px-4">
           {/* Left section */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3 min-w-0">
             {!sidebarOpen && (
               <Button
                 variant="ghost"
@@ -142,11 +142,11 @@ export function TopBar() {
               </Button>
             )}
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <img 
                 src={wiserLogo} 
                 alt="Wiser AI" 
-                className="h-8 w-8 rounded-lg object-contain"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg object-contain"
               />
             </div>
 
@@ -155,10 +155,10 @@ export function TopBar() {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  className="h-9 px-3 gap-2 text-sm font-medium hover:bg-muted"
+                  className="h-9 px-1.5 sm:px-3 gap-1 sm:gap-2 text-xs sm:text-sm font-medium hover:bg-muted truncate max-w-[140px] sm:max-w-none"
                 >
-                  {currentVersion.name}
-                  <ChevronDown className="h-4 w-4 opacity-50" />
+                  <span className="truncate">{currentVersion.name}</span>
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 opacity-50 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-72 bg-card border-border">
@@ -196,7 +196,7 @@ export function TopBar() {
                   variant="ghost"
                   size="icon"
                   onClick={() => navigate('/docs')}
-                  className="hover:bg-muted h-8 w-8"
+                  className="hover:bg-muted h-8 w-8 hidden sm:flex"
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
