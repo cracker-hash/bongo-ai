@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
-import { Message, ChatMode, AIModel, MessageImage, DocumentAttachment } from '@/types/chat';
+import { Message, ChatMode, MessageImage, DocumentAttachment } from '@/types/chat';
 import { useChatStorage, StoredChat } from '@/hooks/useChatStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, generateImage } from '@/lib/streamChat';
@@ -11,14 +11,12 @@ import { toast } from 'sonner';
 interface ChatContextType {
   messages: Message[];
   currentMode: ChatMode;
-  currentModel: AIModel;
   chats: StoredChat[];
   currentChatId: string | null;
   sidebarOpen: boolean;
   isLoading: boolean;
   isLoadingChats: boolean;
   setCurrentMode: (mode: ChatMode) => void;
-  setCurrentModel: (model: AIModel) => void;
   sendMessage: (content: string, images?: string[], document?: DocumentAttachment) => Promise<void>;
   addAssistantMessage: (content: string) => void;
   clearMessages: () => void;
@@ -40,7 +38,6 @@ const getIsMobile = () => typeof window !== 'undefined' && window.innerWidth < 1
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMode, setCurrentMode] = useState<ChatMode>('conversation');
-  const [currentModel, setCurrentModel] = useState<AIModel>('gpt-4o-mini');
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
@@ -432,7 +429,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await streamChat({
       messages: aiMessages,
       mode: currentMode,
-      model: currentModel,
       onDelta: (chunk) => {
         streamingMessageRef.current += chunk;
         setMessages(prev => prev.map(m => 
@@ -479,14 +475,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       value={{
         messages,
         currentMode,
-        currentModel,
         chats,
         currentChatId,
         sidebarOpen,
         isLoading,
         isLoadingChats,
         setCurrentMode,
-        setCurrentModel,
         sendMessage,
         addAssistantMessage,
         clearMessages,
