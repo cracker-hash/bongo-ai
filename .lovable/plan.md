@@ -1,45 +1,100 @@
 
 
-## Plan: Add New API Key, Remove AI Model Dropdown, Fix Errors
+## Plan: AI-Powered Builder Panel (Preview + Code + GitHub Export)
 
-### 1. Remove AI Model Dropdown from ChatInput
+### Overview
 
-The `ChatInput.tsx` component (lines 518-547) has a "Model Dropdown" that lets users pick AI models (GPT-4o, Claude, Gemini, etc.). This will be completely removed.
+When a user clicks "Build website" or "Develop apps" (or sends a coding prompt), a split panel opens alongside the chat showing a **live preview iframe** and a **source code editor**. The AI generates HTML/CSS/JS code via the existing chat edge function, which renders in the preview. Users can iterate via chat, view/edit the source, and export to GitHub.
 
-**Changes to `src/components/chat/ChatInput.tsx`:**
-- Remove the Model Dropdown section (lines 518-547)
-- Remove unused imports: `MODEL_INFO`, `AIModel` from `@/types/chat` (line 26)
-- Remove the `models` variable (line 310)
-- Remove `currentModel` and `setCurrentModel` from the `useChat()` destructuring (line 89)
+### Architecture
 
-### 2. Fix TopBar `useChatSafe` to Use Context Directly
+```text
+┌─────────────────────────────────────────────────────┐
+│ Chat (left)              │ Builder Panel (right)     │
+│                          │ ┌───────────────────────┐ │
+│ User: "Build a landing   │ │ [Preview] [Code] [⚙]  │ │
+│ page for my startup"     │ │                       │ │
+│                          │ │  ┌─────────────────┐  │ │
+│ AI: "Here's your page…"  │ │  │  Live Preview   │  │ │
+│                          │ │  │  (sandboxed      │  │ │
+│ User: "Add a CTA button" │ │  │   iframe)        │  │ │
+│                          │ │  └─────────────────┘  │ │
+│                          │ │  [Export to GitHub]    │ │
+│                          │ └───────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
 
-The `TopBar.tsx` uses `require()` which can fail in Vite/ESM. It should use the exported `ChatContext` with `useContext` like the Sidebar does.
+### Components
 
-**Changes to `src/components/layout/TopBar.tsx`:**
-- Import `ChatContext` from `@/contexts/ChatContext` and `useContext` from React
-- Replace the `require`-based `useChatSafe` with a context-based version that returns defaults when outside the provider
+**1. BuilderPanel component** (`src/components/builder/BuilderPanel.tsx`)
+- Split view with tabs: Preview | Code
+- Preview: sandboxed `<iframe srcDoc={generatedCode}>` with responsive viewport controls (desktop/tablet/mobile)
+- Code: syntax-highlighted editor using `react-syntax-highlighter` (already installed) with copy button. For editing, a simple `<textarea>` with monospace font overlaid (no need for Monaco -- keeps bundle small)
+- Toolbar: viewport size toggles, refresh preview, export to GitHub button, download as ZIP
 
-### 3. Add API Key Management Access
+**2. Code extraction from AI responses**
+- Update `ChatContext` to detect when AI returns code blocks (```html, ```css, ```js) in coding/website/apps mode
+- Parse and combine into a single HTML document, store in a `builderCode` state
+- Auto-update the preview iframe whenever `builderCode` changes
 
-The API Key management already exists at `src/components/apikeys/ApiKeyManagement.tsx` and is accessible via the Dashboard page (`/dashboard` -> "API Keys" tab). The request is to make it easier to create a new API key. We'll add a quick-access button/link in the Dashboard or ensure the flow is smooth.
+**3. Builder state management**
+- Add to `ChatContext`: `builderCode: string | null`, `builderOpen: boolean`, `setBuilderCode`, `setBuilderOpen`
+- When user clicks "Build website" or "Develop apps", set mode to `coding` and open the builder panel
+- Each AI response in coding mode auto-extracts code and updates the preview
 
-Since the `ApiKeyManagement` component already has full CRUD functionality (create, view, delete API keys), no database changes are needed. The feature is already working -- we just need to ensure it's accessible without errors.
+**4. GitHub Export** (`src/components/builder/GithubExportDialog.tsx`)
+- Dialog with repo name input + public/private toggle
+- Calls a new `github-export` edge function that:
+  - Uses the user's GitHub OAuth token from `connected_accounts` table
+  - Creates a repo via GitHub API (`POST /user/repos`)
+  - Creates files via GitHub Contents API (`PUT /repos/{owner}/{repo}/contents/{path}`)
+  - Commits index.html, style.css, script.js, and a README
+- If no GitHub account connected, prompts user to connect via `/connected-accounts`
 
-### Technical Details
+**5. Layout integration**
+- Modify `ChatContainer` to use `react-resizable-panels` (already installed) for a resizable split between chat and builder panel
+- Builder panel slides in from the right when `builderOpen` is true
+- On mobile: builder is full-screen with a back button to chat
 
-**File: `src/components/chat/ChatInput.tsx`**
-- Remove `MODEL_INFO, AIModel` from import on line 26
-- Remove `currentModel, setCurrentModel` from useChat() on line 89
-- Remove `const models = ...` on line 310
-- Delete the entire Model Dropdown block (lines 518-547)
+### Database
 
-**File: `src/components/layout/TopBar.tsx`**
-- Replace the `useChatSafe` function (lines 26-34) to use `ChatContext` with `useContext` instead of `require`
-- Import `ChatContext` and `useContext`
+**New table: `builder_projects`**
+- `id` (uuid, PK)
+- `user_id` (uuid, NOT NULL)
+- `name` (text)
+- `html_code` (text) -- the generated HTML
+- `css_code` (text)
+- `js_code` (text)
+- `created_at`, `updated_at`
+- RLS: users can only CRUD their own rows
 
-### Error Prevention
-- Both Sidebar and TopBar will use the same safe pattern: check if `ChatContext` is undefined and return defaults
-- No `require()` calls which can break in Vite ESM builds
-- The AI model selection is cleanly removed without leaving orphan references
+### Edge Function: `github-export`
+- Accepts: `{ repoName, isPrivate, files: [{path, content}] }`
+- Reads GitHub token from `connected_accounts` for the authenticated user
+- Creates repo + commits files via GitHub REST API
+- Returns repo URL
+
+### Files to Create/Edit
+
+| File | Action |
+|------|--------|
+| `src/components/builder/BuilderPanel.tsx` | New -- preview iframe + code viewer + toolbar |
+| `src/components/builder/GithubExportDialog.tsx` | New -- repo creation dialog |
+| `src/components/builder/PreviewFrame.tsx` | New -- sandboxed iframe with viewport controls |
+| `src/components/builder/CodeEditor.tsx` | New -- syntax-highlighted code view + edit |
+| `src/contexts/ChatContext.tsx` | Edit -- add `builderCode`, `builderOpen` state + code extraction logic |
+| `src/components/chat/ChatContainer.tsx` | Edit -- add resizable split layout with BuilderPanel |
+| `src/components/chat/WelcomeScreen.tsx` | Edit -- wire "Build website" / "Develop apps" to open builder |
+| `supabase/functions/github-export/index.ts` | New -- GitHub repo creation + file commit |
+| DB migration | New -- `builder_projects` table with RLS |
+
+### Implementation Order
+
+1. Create `builder_projects` table via migration
+2. Build `BuilderPanel`, `PreviewFrame`, `CodeEditor` components
+3. Update `ChatContext` with builder state + code extraction from AI responses
+4. Update `ChatContainer` with resizable split layout
+5. Wire WelcomeScreen tool buttons to open builder
+6. Build `GithubExportDialog` + `github-export` edge function
+7. Add download-as-ZIP fallback (no GitHub needed)
 
