@@ -1,27 +1,13 @@
-// Secured Document Processing Edge Function with auth, validation, and restricted CORS
+// Document Processing Edge Function with Lovable AI gateway + fallbacks
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://wiser-ai.lovable.app',
-  'https://gbbqdmgrjtdliiddikwq.lovableproject.com',
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-function getCorsHeaders(origin: string | null) {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o.replace(/:\d+$/, ''))) 
-    ? origin 
-    : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 // Input validation schemas
 const DocumentRequestSchema = z.object({
@@ -99,10 +85,40 @@ async function extractPdfText(pdfContent: string, filename: string): Promise<str
   }
 }
 
-serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
+// Get AI provider config with Lovable AI gateway as primary
+function getAIConfig(): { apiUrl: string; apiKey: string; model: string; headers: Record<string, string> } {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
+  if (LOVABLE_API_KEY) {
+    return {
+      apiUrl: "https://ai.gateway.lovable.dev/v1/chat/completions",
+      apiKey: LOVABLE_API_KEY,
+      model: "google/gemini-3-flash-preview",
+      headers: {},
+    };
+  }
+  if (OPENROUTER_API_KEY) {
+    return {
+      apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+      apiKey: OPENROUTER_API_KEY,
+      model: "openai/gpt-4o-mini",
+      headers: { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" },
+    };
+  }
+  if (OPENAI_API_KEY) {
+    return {
+      apiUrl: "https://api.openai.com/v1/chat/completions",
+      apiKey: OPENAI_API_KEY,
+      model: "gpt-4o-mini",
+      headers: {},
+    };
+  }
+  throw new Error("No AI API key configured");
+}
+
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -147,25 +163,17 @@ serve(async (req) => {
 
     const { content, filename, mode, question, userAnswer, documentContext, isPdf, fileBase64, fileName, fileType } = validationResult.data;
     
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    
-    if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
-      console.error("No AI API key configured");
+    let aiConfig: ReturnType<typeof getAIConfig>;
+    try {
+      aiConfig = getAIConfig();
+    } catch {
       return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
-    const useOpenRouter = !!OPENROUTER_API_KEY;
-    const apiUrl = useOpenRouter 
-      ? "https://openrouter.ai/api/v1/chat/completions" 
-      : "https://api.openai.com/v1/chat/completions";
-    const apiKey = useOpenRouter ? OPENROUTER_API_KEY : OPENAI_API_KEY;
-    const model = useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
-    
-    console.log(`Document processing: user=${claimsData.user.id.slice(0, 8)}, mode=${mode}`);
+    console.log(`Document processing: user=${claimsData.user.id.slice(0, 8)}, mode=${mode}, provider=${aiConfig.apiUrl.includes('lovable') ? 'lovable' : aiConfig.apiUrl.includes('openrouter') ? 'openrouter' : 'openai'}`);
 
     // Handle simple text extraction for podcast generator
     if (fileBase64 && fileType === 'pdf') {
@@ -177,6 +185,45 @@ serve(async (req) => {
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Helper to call AI
+    async function callAI(messages: any[], useJsonFormat: boolean, maxTokens = 2048) {
+      const response = await fetch(aiConfig.apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${aiConfig.apiKey}`,
+          "Content-Type": "application/json",
+          ...aiConfig.headers,
+        },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          messages,
+          max_tokens: maxTokens,
+          ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Service is busy. Please try again later." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "Service credits exhausted." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const errorText = await response.text();
+        console.error("AI API error:", response.status, errorText);
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "";
     }
 
     // Handle answer validation mode
@@ -206,46 +253,28 @@ Respond with valid JSON only (no markdown):
   "additionalInfo": "Related insight if correct"
 }`;
 
-      const validationResponse = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
-          ...(useOpenRouter && { "X-Title": "Wiser AI" }),
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: validationPrompt }],
-          response_format: { type: "json_object" },
-          max_tokens: 1500,
-        }),
-      });
+      const result = await callAI(
+        [{ role: "user", content: validationPrompt }],
+        true,
+        1500
+      );
 
-      if (!validationResponse.ok) {
-        console.error("Validation API error:", validationResponse.status);
-        return new Response(JSON.stringify({ error: 'Unable to validate answer' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+      // If callAI returned a Response (error), pass it through
+      if (result instanceof Response) return result;
 
-      const validationData = await validationResponse.json();
-      const validationContent = validationData.choices?.[0]?.message?.content || "";
-      
       try {
-        const result = JSON.parse(validationContent);
+        const parsed = JSON.parse(result);
         return new Response(JSON.stringify({
-          isCorrect: result.isCorrect === true,
-          explanation: result.explanation || "Unable to provide explanation.",
-          additionalInfo: result.additionalInfo || ""
+          isCorrect: parsed.isCorrect === true,
+          explanation: parsed.explanation || "Unable to provide explanation.",
+          additionalInfo: parsed.additionalInfo || ""
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch {
         return new Response(JSON.stringify({
           isCorrect: false,
-          explanation: validationContent,
+          explanation: result,
           additionalInfo: ""
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -306,47 +335,15 @@ Document content:
 ${processedContent}`;
     }
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        ...(useOpenRouter && { "HTTP-Referer": "https://wiser-ai.lovable.app" }),
-        ...(useOpenRouter && { "X-Title": "Wiser AI" }),
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You are WISER AI, an expert educational content analyzer." },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 2048,
-        ...(mode === "quiz" ? { response_format: { type: "json_object" } } : {}),
-      }),
-    });
+    const analysisContent = await callAI(
+      [
+        { role: "system", content: "You are WISER AI, an expert educational content analyzer." },
+        { role: "user", content: userPrompt },
+      ],
+      mode === "quiz"
+    );
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Service is busy. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Service credits exhausted." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      console.error("Document API error:", response.status);
-      return new Response(JSON.stringify({ error: 'Unable to process document' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const data = await response.json();
-    const analysisContent = data.choices?.[0]?.message?.content || "";
+    if (analysisContent instanceof Response) return analysisContent;
 
     console.log("Document processed successfully");
 
