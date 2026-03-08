@@ -32,7 +32,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
   const [conversationActive, setConversationActive] = useState(false);
   const [statusPhrase, setStatusPhrase] = useState(getRandomPhrase(bongoResponses.ready));
   const [audioLevel, setAudioLevel] = useState(0);
-  const { currentMode, currentModel } = useChat();
+  const { currentMode } = useChat();
   
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechRef = useRef<number>(Date.now());
