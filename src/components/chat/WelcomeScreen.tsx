@@ -532,7 +532,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                   </p>
                 </div>
               </div>
-              <Button className="bg-white text-black hover:bg-white/90">Connect</Button>
+              <Button className="bg-white text-black hover:bg-white/90" onClick={() => toast.info('Browser connector coming soon!')}>Connect</Button>
             </div>
           </div>
 
