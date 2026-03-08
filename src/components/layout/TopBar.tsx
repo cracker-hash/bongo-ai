@@ -200,6 +200,29 @@ export function TopBar() {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
+            {/* Agent Panel */}
+            {isAuthenticated && (
+              <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-muted h-9 w-9 text-primary"
+                      >
+                        <Bot className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Wiser Agent</TooltipContent>
+                </Tooltip>
+                <SheetContent side="right" className="w-full sm:max-w-2xl p-0 overflow-y-auto">
+                  <ManusPanel onClose={() => setShowAgentPanel(false)} />
+                </SheetContent>
+              </Sheet>
+            )}
+
             {/* Podcast Button */}
             <Tooltip>
               <TooltipTrigger asChild>
