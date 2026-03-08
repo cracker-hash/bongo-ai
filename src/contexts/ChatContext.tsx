@@ -16,11 +16,15 @@ interface ChatContextType {
   sidebarOpen: boolean;
   isLoading: boolean;
   isLoadingChats: boolean;
+  builderCode: string | null;
+  builderOpen: boolean;
   setCurrentMode: (mode: ChatMode) => void;
   sendMessage: (content: string, images?: string[], document?: DocumentAttachment) => Promise<void>;
   addAssistantMessage: (content: string) => void;
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
+  setBuilderCode: (code: string | null) => void;
+  setBuilderOpen: (open: boolean) => void;
   createNewChat: () => Promise<void>;
   createChatForProject: (projectId: string, projectName: string) => Promise<string | null>;
   selectChat: (id: string) => Promise<void>;
