@@ -87,6 +87,7 @@ export function TopBar() {
   const [isDark, setIsDark] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState('lite');
   const [showPodcastDialog, setShowPodcastDialog] = useState(false);
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
