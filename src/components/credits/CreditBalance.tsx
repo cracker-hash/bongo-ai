@@ -1,6 +1,6 @@
 import { Coins, Clock, Zap } from 'lucide-react';
 import { useCredits } from '@/hooks/useCredits';
-import { formatCredits } from '@/lib/creditConfig';
+import { formatCredits, TIER_DAILY_CREDITS } from '@/lib/creditConfig';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { formatDistanceToNow } from 'date-fns';
