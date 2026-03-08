@@ -1223,12 +1223,12 @@ function ApiDocsContent() {
                     </CardHeader>
                     <CardContent>
                       <div className="bg-muted rounded-lg p-3 font-mono text-sm flex items-center justify-between">
-                        <code>{API_BASE_URL}{endpoint.path}</code>
+                        <code>POST {API_BASE_URL}</code>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => copyToClipboard(`${API_BASE_URL}${endpoint.path}`, endpoint.path)}
+                          onClick={() => copyToClipboard(API_BASE_URL, endpoint.path)}
                         >
                           {copiedCode === endpoint.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         </Button>
