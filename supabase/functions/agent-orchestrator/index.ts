@@ -244,9 +244,9 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) throw new Error("Authentication failed");
-    const userId = claimsData.claims.sub as string;
+    const { data: userData, error: userError } = await authClient.auth.getUser(token);
+    if (userError || !userData?.user) throw new Error("Authentication failed");
+    const userId = userData.user.id;
 
     const { action, taskId, input, capability } = await req.json();
 
