@@ -173,56 +173,52 @@ curl -X POST "${SUPABASE_FUNCTIONS_URL}/api-gateway" \\
     "prompt": "A beautiful sunset over African savanna",
     "size": "1024x1024"
   }'`,
-  javascript: `// WISER AI SDK - JavaScript/TypeScript
-// Install: npm install @wiser-ai/sdk
+  javascript: `// WISER AI - JavaScript/TypeScript Integration
+// Uses the API Gateway with your wsr_ API key
 
-import { WiserAI } from '@wiser-ai/sdk';
+const WISER_API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
-// Initialize the client
-const wiser = new WiserAI({
-  apiKey: process.env.WISER_API_KEY,
-  baseURL: '${SUPABASE_FUNCTIONS_URL}'
-});
-
-// Chat completion with streaming
+// Chat completion
 async function chat() {
-  const response = await wiser.chat.completions.create({
-    model: 'wiser-pro',
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Explain quantum computing in simple terms.' }
-    ],
-    temperature: 0.7,
-    max_tokens: 2048,
-    stream: true
-  });
-
-  // Handle streaming response
-  for await (const chunk of response) {
-    process.stdout.write(chunk.choices[0]?.delta?.content || '');
-  }
-}
-
-// Non-streaming usage with fetch
-async function chatWithFetch() {
-  const response = await fetch('${SUPABASE_FUNCTIONS_URL}/chat', {
+  const response = await fetch(WISER_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${process.env.WISER_API_KEY}\`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      endpoint: 'chat/completions',
       model: 'wiser-pro',
       messages: [
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Explain quantum computing.' }
       ],
-      stream: false
+      temperature: 0.7,
+      max_tokens: 2048
     })
   });
 
   const data = await response.json();
   console.log(data.choices[0].message.content);
+}
+
+// Image generation
+async function generateImage() {
+  const response = await fetch(WISER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${process.env.WISER_API_KEY}\`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      endpoint: 'images/generate',
+      prompt: 'A beautiful sunset over African savanna',
+      size: '1024x1024'
+    })
+  });
+
+  const data = await response.json();
+  console.log(data);
 }
 
 chat().catch(console.error);`,
