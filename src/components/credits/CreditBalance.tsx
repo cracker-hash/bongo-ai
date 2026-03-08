@@ -23,9 +23,7 @@ export function CreditBalance({ showProgress = false, compact = false }: CreditB
     );
   }
 
-  const maxCredits = tier === 'free' ? 200 : 
-    tier === 'lite' ? 15000 : 
-    tier === 'pro' ? 50000 : 500000;
+  const maxCredits = TIER_DAILY_CREDITS[tier as keyof typeof TIER_DAILY_CREDITS] ?? TIER_DAILY_CREDITS.free;
   
   const progressPercent = Math.min((balance / maxCredits) * 100, 100);
   const timeToReset = formatDistanceToNow(nextResetTime, { addSuffix: true });

@@ -7,12 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Credit allocations per tier
-const TIER_CREDITS = {
-  free: 200, // daily
-  lite: 15000, // monthly
-  pro: 50000, // monthly
-  max: 500000, // monthly
+// Daily credit allocations per tier
+const TIER_DAILY_CREDITS: Record<string, number> = {
+  free: 200,
+  lite: 500,
+  pro: 1666,
+  max: 16666,
 };
 
 // Map Stripe product IDs to tiers
@@ -22,7 +22,7 @@ const PRODUCT_TO_TIER: Record<string, string> = {
   'prod_TjlwSBviPz1or8': 'max',
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[SYNC-CREDITS] ${step}${detailsStr}`);
 };
@@ -60,7 +60,6 @@ serve(async (req) => {
     // Check for active subscription
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let tier = 'free';
-    let hasActiveSubscription = false;
 
     if (customers.data.length > 0) {
       const customerId = customers.data[0].id;
@@ -71,13 +70,14 @@ serve(async (req) => {
       });
 
       if (subscriptions.data.length > 0) {
-        hasActiveSubscription = true;
         const subscription = subscriptions.data[0];
         const productId = subscription.items.data[0].price.product as string;
         tier = PRODUCT_TO_TIER[productId] || 'free';
         logStep("Active subscription found", { tier, productId });
       }
     }
+
+    const dailyCredits = TIER_DAILY_CREDITS[tier] ?? TIER_DAILY_CREDITS.free;
 
     // Get or create user credits record
     const { data: existingCredits, error: fetchError } = await supabaseClient
@@ -93,31 +93,24 @@ serve(async (req) => {
     todayMidnight.setUTCHours(0, 0, 0, 0);
 
     if (!existingCredits) {
-      // Create new credits record
-      const initialCredits = tier === 'free' ? TIER_CREDITS.free : TIER_CREDITS[tier as keyof typeof TIER_CREDITS];
-      
+      // Create new credits record with daily allocation
       const { error: insertError } = await supabaseClient
         .from('user_credits')
         .insert({
           user_id: user.id,
-          balance: initialCredits,
+          balance: dailyCredits,
           subscription_tier: tier,
-          monthly_allocation: tier !== 'free' ? initialCredits : 0,
+          monthly_allocation: dailyCredits,
           last_daily_reset: now.toISOString(),
-          last_monthly_reset: tier !== 'free' ? now.toISOString() : null,
         });
 
       if (insertError) throw insertError;
-      logStep("Created new credits record", { tier, credits: initialCredits });
+      logStep("Created new credits record", { tier, credits: dailyCredits });
 
       return new Response(JSON.stringify({
-        success: true,
-        tier,
-        balance: initialCredits,
-        message: "Credits initialized"
+        success: true, tier, balance: dailyCredits, message: "Credits initialized"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
       });
     }
 
@@ -125,95 +118,77 @@ serve(async (req) => {
     const currentTier = existingCredits.subscription_tier;
     
     if (currentTier !== tier) {
-      // Tier changed - update credits
-      const newCredits = tier === 'free' ? TIER_CREDITS.free : TIER_CREDITS[tier as keyof typeof TIER_CREDITS];
-      
       const { error: updateError } = await supabaseClient
         .from('user_credits')
         .update({
           subscription_tier: tier,
-          balance: existingCredits.balance + (tier !== 'free' ? newCredits : 0),
-          monthly_allocation: tier !== 'free' ? newCredits : 0,
-          last_monthly_reset: tier !== 'free' ? now.toISOString() : null,
+          balance: dailyCredits,
+          monthly_allocation: dailyCredits,
+          last_daily_reset: now.toISOString(),
         })
         .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
-      // Log the tier change
       await supabaseClient
         .from('credit_transactions')
         .insert({
           user_id: user.id,
           operation: 'tier_change',
-          amount: tier !== 'free' ? newCredits : 0,
+          amount: dailyCredits,
           transaction_type: 'credit',
-          balance_after: existingCredits.balance + (tier !== 'free' ? newCredits : 0),
-          description: `Tier changed from ${currentTier} to ${tier}`,
+          balance_after: dailyCredits,
+          description: `Tier changed from ${currentTier} to ${tier} - ${dailyCredits} daily credits`,
         });
 
       logStep("Tier updated", { from: currentTier, to: tier });
 
       return new Response(JSON.stringify({
-        success: true,
-        tier,
-        balance: existingCredits.balance + (tier !== 'free' ? newCredits : 0),
-        message: "Tier updated"
+        success: true, tier, balance: dailyCredits, message: "Tier updated"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
       });
     }
 
-    // Check for daily reset (free tier only)
-    if (tier === 'free') {
-      const lastReset = new Date(existingCredits.last_daily_reset);
-      if (lastReset < todayMidnight) {
-        const { error: resetError } = await supabaseClient
-          .from('user_credits')
-          .update({
-            balance: TIER_CREDITS.free,
-            last_daily_reset: now.toISOString(),
-          })
-          .eq('user_id', user.id);
+    // Check for daily reset
+    const lastReset = new Date(existingCredits.last_daily_reset);
+    if (lastReset < todayMidnight) {
+      const { error: resetError } = await supabaseClient
+        .from('user_credits')
+        .update({
+          balance: dailyCredits,
+          last_daily_reset: now.toISOString(),
+        })
+        .eq('user_id', user.id);
 
-        if (resetError) throw resetError;
+      if (resetError) throw resetError;
 
-        await supabaseClient
-          .from('credit_transactions')
-          .insert({
-            user_id: user.id,
-            operation: 'daily_reset',
-            amount: TIER_CREDITS.free,
-            transaction_type: 'credit',
-            balance_after: TIER_CREDITS.free,
-            description: 'Daily credit reset for free tier',
-          });
-
-        logStep("Daily credits reset");
-
-        return new Response(JSON.stringify({
-          success: true,
-          tier,
-          balance: TIER_CREDITS.free,
-          message: "Daily credits reset"
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
+      await supabaseClient
+        .from('credit_transactions')
+        .insert({
+          user_id: user.id,
+          operation: 'daily_reset',
+          amount: dailyCredits,
+          transaction_type: 'credit',
+          balance_after: dailyCredits,
+          description: `Daily credit reset for ${tier} tier`,
         });
-      }
+
+      logStep("Daily credits reset", { tier, credits: dailyCredits });
+
+      return new Response(JSON.stringify({
+        success: true, tier, balance: dailyCredits, message: "Daily credits reset"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     logStep("No updates needed", { tier, balance: existingCredits.balance });
 
     return new Response(JSON.stringify({
-      success: true,
-      tier,
-      balance: existingCredits.balance,
-      message: "Credits up to date"
+      success: true, tier, balance: existingCredits.balance, message: "Credits up to date"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
     });
 
   } catch (error) {

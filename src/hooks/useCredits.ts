@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  FREE_TIER_DAILY_CREDITS, 
-  TIER_MONTHLY_CREDITS,
+  TIER_DAILY_CREDITS,
   getCreditCost,
+  getDailyCredits,
   shouldResetDailyCredits,
   getNextResetTime,
   OperationType,
@@ -48,7 +48,6 @@ export function useCredits() {
     }
 
     try {
-      // Try to fetch existing credits record
       const { data, error } = await supabase
         .from('user_credits')
         .select('*')
@@ -63,7 +62,7 @@ export function useCredits() {
           .from('user_credits')
           .insert({
             user_id: user.id,
-            balance: FREE_TIER_DAILY_CREDITS,
+            balance: TIER_DAILY_CREDITS.free,
             subscription_tier: 'free',
             last_daily_reset: new Date().toISOString(),
           })
@@ -73,14 +72,15 @@ export function useCredits() {
         if (insertError) throw insertError;
         setCredits(newCredits as UserCredits);
       } else {
-        // Check if daily reset is needed for free tier
-        const tier = data.subscription_tier as SubscriptionTier;
-        if (tier === 'free' && shouldResetDailyCredits(new Date(data.last_daily_reset))) {
-          // Reset credits for free tier
+        // Check if daily reset is needed for ANY tier
+        const tier = (data.subscription_tier as SubscriptionTier) || 'free';
+        if (shouldResetDailyCredits(new Date(data.last_daily_reset))) {
+          const dailyAllocation = getDailyCredits(tier);
+          
           const { data: updatedCredits, error: updateError } = await supabase
             .from('user_credits')
             .update({
-              balance: FREE_TIER_DAILY_CREDITS,
+              balance: dailyAllocation,
               last_daily_reset: new Date().toISOString(),
             })
             .eq('user_id', user.id)
@@ -88,6 +88,19 @@ export function useCredits() {
             .single();
 
           if (updateError) throw updateError;
+
+          // Log the daily reset transaction
+          await supabase
+            .from('credit_transactions')
+            .insert({
+              user_id: user.id,
+              operation: 'daily_reset',
+              amount: dailyAllocation,
+              transaction_type: 'credit',
+              balance_after: dailyAllocation,
+              description: `Daily credit reset for ${tier} tier`,
+            });
+
           setCredits(updatedCredits as UserCredits);
         } else {
           setCredits(data as UserCredits);
@@ -141,7 +154,6 @@ export function useCredits() {
     try {
       const newBalance = credits.balance - cost;
 
-      // Update balance
       const { error: updateError } = await supabase
         .from('user_credits')
         .update({ balance: newBalance })
@@ -149,7 +161,6 @@ export function useCredits() {
 
       if (updateError) throw updateError;
 
-      // Log transaction
       await supabase
         .from('credit_transactions')
         .insert({
@@ -161,9 +172,7 @@ export function useCredits() {
           description: description || `Used ${cost} credits for ${operation}`,
         });
 
-      // Update local state
       setCredits(prev => prev ? { ...prev, balance: newBalance } : null);
-
       return { success: true, newBalance };
     } catch (error) {
       console.error('Error deducting credits:', error);
@@ -182,7 +191,6 @@ export function useCredits() {
     try {
       const newBalance = credits.balance + amount;
 
-      // Update balance
       const { error: updateError } = await supabase
         .from('user_credits')
         .update({ balance: newBalance })
@@ -190,7 +198,6 @@ export function useCredits() {
 
       if (updateError) throw updateError;
 
-      // Log transaction
       await supabase
         .from('credit_transactions')
         .insert({
@@ -202,9 +209,7 @@ export function useCredits() {
           description: `Added ${amount} credits: ${reason}`,
         });
 
-      // Update local state
       setCredits(prev => prev ? { ...prev, balance: newBalance } : null);
-
       return { success: true, newBalance };
     } catch (error) {
       console.error('Error adding credits:', error);
@@ -220,33 +225,30 @@ export function useCredits() {
     }
 
     try {
-      const monthlyCredits = TIER_MONTHLY_CREDITS[tier];
+      const dailyCredits = getDailyCredits(tier);
 
       const { error: updateError } = await supabase
         .from('user_credits')
         .update({
           subscription_tier: tier,
-          balance: tier === 'free' ? FREE_TIER_DAILY_CREDITS : credits.balance + monthlyCredits,
-          monthly_allocation: monthlyCredits,
-          last_monthly_reset: tier !== 'free' ? new Date().toISOString() : null,
+          balance: dailyCredits,
+          monthly_allocation: dailyCredits,
+          last_daily_reset: new Date().toISOString(),
         })
         .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
-      // Log the subscription change
-      if (tier !== 'free') {
-        await supabase
-          .from('credit_transactions')
-          .insert({
-            user_id: user.id,
-            operation: 'subscription_upgrade',
-            amount: monthlyCredits,
-            transaction_type: 'credit',
-            balance_after: credits.balance + monthlyCredits,
-            description: `Upgraded to ${tier} tier - ${monthlyCredits} monthly credits`,
-          });
-      }
+      await supabase
+        .from('credit_transactions')
+        .insert({
+          user_id: user.id,
+          operation: 'tier_change',
+          amount: dailyCredits,
+          transaction_type: 'credit',
+          balance_after: dailyCredits,
+          description: `Switched to ${tier} tier - ${dailyCredits} daily credits`,
+        });
 
       await fetchCredits();
       return { success: true };
@@ -256,14 +258,12 @@ export function useCredits() {
     }
   }, [user, credits, fetchCredits]);
 
-  // Check if user can afford an operation
   const canAfford = useCallback((operation: OperationType, customAmount?: number): boolean => {
     if (!credits) return false;
     const cost = customAmount ?? getCreditCost(operation);
     return credits.balance >= cost;
   }, [credits]);
 
-  // Initial fetch
   useEffect(() => {
     if (isAuthenticated) {
       fetchCredits();
@@ -271,12 +271,10 @@ export function useCredits() {
     }
   }, [isAuthenticated, fetchCredits, fetchTransactions]);
 
-  // Update next reset time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setNextResetTime(getNextResetTime());
     }, 60000);
-
     return () => clearInterval(interval);
   }, []);
 
