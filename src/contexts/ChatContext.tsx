@@ -445,6 +445,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       },
       onDone: async () => {
         setIsLoading(false);
+        
+        // Extract code blocks for builder panel
+        const finalContent = streamingMessageRef.current;
+        if (currentMode === 'coding' || currentMode === 'creative') {
+          const htmlMatch = finalContent.match(/```html\n([\s\S]*?)```/);
+          const cssMatch = finalContent.match(/```css\n([\s\S]*?)```/);
+          const jsMatch = finalContent.match(/```(?:javascript|js)\n([\s\S]*?)```/);
+          
+          if (htmlMatch) {
+            let fullHtml = htmlMatch[1];
+            // If there's separate CSS/JS, inject them
+            if (cssMatch && !fullHtml.includes('<style>')) {
+              fullHtml = fullHtml.replace('</head>', `<style>${cssMatch[1]}</style></head>`);
+            }
+            if (jsMatch && !fullHtml.includes('<script>')) {
+              fullHtml = fullHtml.replace('</body>', `<script>${jsMatch[1]}</script></body>`);
+            }
+            setBuilderCode(fullHtml);
+            setBuilderOpen(true);
+          }
+        }
+        
         // Save assistant message (only for authenticated users)
         if (isAuthenticated && user && chatId && streamingMessageRef.current) {
           await saveMessage(chatId, streamingMessageRef.current, 'assistant', currentMode);

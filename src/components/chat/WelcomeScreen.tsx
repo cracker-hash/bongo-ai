@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/contexts/ChatContext';
 import { ChatMode } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import {
