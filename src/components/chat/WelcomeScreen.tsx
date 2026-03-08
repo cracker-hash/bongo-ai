@@ -174,11 +174,64 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
   const { isAuthenticated, setShowAuthModal, user } = useAuth();
+  const navigate = useNavigate();
   const [showConnectors, setShowConnectors] = useState(false);
   const [connectorSearch, setConnectorSearch] = useState('');
   const [selectedTool, setSelectedTool] = useState<ToolType>('default');
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [adSlideIndex, setAdSlideIndex] = useState(0);
+
+  const handleMoreToolClick = (label: string) => {
+    setShowMoreTools(false);
+    switch (label) {
+      case 'Schedule task':
+        // Open ManusPanel via the TopBar bot icon - dispatch custom event
+        window.dispatchEvent(new CustomEvent('open-manus-panel'));
+        break;
+      case 'Wide Research':
+        onPromptClick('Conduct a wide research on: ', 'research');
+        break;
+      case 'Chat mode':
+        onPromptClick('', 'conversation');
+        break;
+      case 'Spreadsheet':
+        onPromptClick('Create a spreadsheet with the following data: ', 'creative');
+        break;
+      case 'Visualization':
+        onPromptClick('Create a data visualization chart for: ', 'creative');
+        break;
+      case 'Video':
+        onPromptClick('Generate a video: ', 'creative');
+        break;
+      case 'Audio':
+        onPromptClick('Generate audio: ', 'creative');
+        break;
+      case 'Playbook':
+        toast.info('Playbook templates coming soon!');
+        break;
+      default:
+        toast.info('Coming soon!');
+    }
+  };
+
+  const handleConnectorClick = (connectorName: string) => {
+    switch (connectorName) {
+      case 'Gmail':
+      case 'Google Calendar':
+      case 'Google Drive':
+        setShowConnectors(false);
+        navigate('/connected-accounts');
+        break;
+      case 'My Browser':
+      case 'GitHub':
+      case 'Slack':
+      case 'Notion':
+        toast.info(`${connectorName} integration coming soon!`);
+        break;
+      default:
+        toast.info('Coming soon!');
+    }
+  };
 
   const handleToolClick = (toolId: ToolType) => {
     setSelectedTool(selectedTool === toolId ? 'default' : toolId);
