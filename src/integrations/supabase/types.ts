@@ -273,6 +273,39 @@ export type Database = {
         }
         Relationships: []
       }
+      builder_projects: {
+        Row: {
+          created_at: string
+          css_code: string | null
+          html_code: string | null
+          id: string
+          js_code: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          css_code?: string | null
+          html_code?: string | null
+          id?: string
+          js_code?: string | null
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          css_code?: string | null
+          html_code?: string | null
+          id?: string
+          js_code?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chats: {
         Row: {
           created_at: string

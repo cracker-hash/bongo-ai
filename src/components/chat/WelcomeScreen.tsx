@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/contexts/ChatContext';
 import { ChatMode } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import {
@@ -174,6 +175,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
   const { isAuthenticated, setShowAuthModal, user } = useAuth();
+  const { setBuilderOpen, setCurrentMode } = useChat();
   const navigate = useNavigate();
   const [showConnectors, setShowConnectors] = useState(false);
   const [connectorSearch, setConnectorSearch] = useState('');
@@ -235,6 +237,11 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
 
   const handleToolClick = (toolId: ToolType) => {
     setSelectedTool(selectedTool === toolId ? 'default' : toolId);
+    // Open builder panel for website/apps tools
+    if (toolId === 'website' || toolId === 'apps') {
+      setCurrentMode('coding');
+      setBuilderOpen(true);
+    }
   };
 
   const handlePromptClick = (prompt: string) => {

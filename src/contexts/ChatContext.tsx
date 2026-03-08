@@ -16,11 +16,15 @@ interface ChatContextType {
   sidebarOpen: boolean;
   isLoading: boolean;
   isLoadingChats: boolean;
+  builderCode: string | null;
+  builderOpen: boolean;
   setCurrentMode: (mode: ChatMode) => void;
   sendMessage: (content: string, images?: string[], document?: DocumentAttachment) => Promise<void>;
   addAssistantMessage: (content: string) => void;
   clearMessages: () => void;
   setSidebarOpen: (open: boolean) => void;
+  setBuilderCode: (code: string | null) => void;
+  setBuilderOpen: (open: boolean) => void;
   createNewChat: () => Promise<void>;
   createChatForProject: (projectId: string, projectName: string) => Promise<string | null>;
   selectChat: (id: string) => Promise<void>;
@@ -41,6 +45,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!getIsMobile());
   const [isLoading, setIsLoading] = useState(false);
+  const [builderCode, setBuilderCode] = useState<string | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const streamingMessageRef = useRef<string>('');
 
   const { user, isAuthenticated } = useAuth();
@@ -439,6 +445,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       },
       onDone: async () => {
         setIsLoading(false);
+        
+        // Extract code blocks for builder panel
+        const finalContent = streamingMessageRef.current;
+        if (currentMode === 'coding' || currentMode === 'creative') {
+          const htmlMatch = finalContent.match(/```html\n([\s\S]*?)```/);
+          const cssMatch = finalContent.match(/```css\n([\s\S]*?)```/);
+          const jsMatch = finalContent.match(/```(?:javascript|js)\n([\s\S]*?)```/);
+          
+          if (htmlMatch) {
+            let fullHtml = htmlMatch[1];
+            // If there's separate CSS/JS, inject them
+            if (cssMatch && !fullHtml.includes('<style>')) {
+              fullHtml = fullHtml.replace('</head>', `<style>${cssMatch[1]}</style></head>`);
+            }
+            if (jsMatch && !fullHtml.includes('<script>')) {
+              fullHtml = fullHtml.replace('</body>', `<script>${jsMatch[1]}</script></body>`);
+            }
+            setBuilderCode(fullHtml);
+            setBuilderOpen(true);
+          }
+        }
+        
         // Save assistant message (only for authenticated users)
         if (isAuthenticated && user && chatId && streamingMessageRef.current) {
           await saveMessage(chatId, streamingMessageRef.current, 'assistant', currentMode);
@@ -480,11 +508,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         sidebarOpen,
         isLoading,
         isLoadingChats,
+        builderCode,
+        builderOpen,
         setCurrentMode,
         sendMessage,
         addAssistantMessage,
         clearMessages,
         setSidebarOpen,
+        setBuilderCode,
+        setBuilderOpen,
         createNewChat,
         createChatForProject,
         selectChat,
