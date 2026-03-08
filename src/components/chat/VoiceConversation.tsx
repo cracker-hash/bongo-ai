@@ -168,7 +168,6 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
           body: JSON.stringify({
             messages: [{ role: 'user', content: text }],
             mode: currentMode,
-            model: currentModel,
             isVoice: true
           })
         }
