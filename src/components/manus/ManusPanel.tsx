@@ -140,7 +140,7 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
         </div>
 
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tasks">
               <ListTodo className="h-4 w-4 mr-1.5" />
               Tasks ({tasks.length})
@@ -148,6 +148,10 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
             <TabsTrigger value="detail">
               <Eye className="h-4 w-4 mr-1.5" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="schedules">
+              <Timer className="h-4 w-4 mr-1.5" />
+              Schedules
             </TabsTrigger>
           </TabsList>
 
