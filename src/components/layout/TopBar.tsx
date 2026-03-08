@@ -1,4 +1,4 @@
-import { Menu, Moon, Sun, ChevronDown, Check, FileText } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronDown, Check, FileText, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useContext } from 'react';
@@ -10,6 +10,8 @@ import { PodcastGeneratorDialog } from '@/components/podcast/PodcastGeneratorDia
 import { NotificationsDropdown } from '@/components/layout/NotificationsDropdown';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { CreditBalance } from '@/components/credits/CreditBalance';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ManusPanel } from '@/components/manus/ManusPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +87,7 @@ export function TopBar() {
   const [isDark, setIsDark] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState('lite');
   const [showPodcastDialog, setShowPodcastDialog] = useState(false);
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -197,6 +200,29 @@ export function TopBar() {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
+            {/* Agent Panel */}
+            {isAuthenticated && (
+              <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-muted h-9 w-9 text-primary"
+                      >
+                        <Bot className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Wiser Agent</TooltipContent>
+                </Tooltip>
+                <SheetContent side="right" className="w-full sm:max-w-2xl p-0 overflow-y-auto">
+                  <ManusPanel onClose={() => setShowAgentPanel(false)} />
+                </SheetContent>
+              </Sheet>
+            )}
+
             {/* Podcast Button */}
             <Tooltip>
               <TooltipTrigger asChild>

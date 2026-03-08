@@ -721,6 +721,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_next_run: { Args: { cron_expr: string }; Returns: string }
       process_agent_schedules: { Args: never; Returns: undefined }
     }
     Enums: {
