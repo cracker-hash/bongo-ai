@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -155,6 +155,60 @@ export function useAgentTasks() {
       return null;
     }
   }, [callOrchestrator]);
+
+  // Realtime subscriptions for live updates
+  const subscribedRef = useRef(false);
+
+  useEffect(() => {
+    if (!user || subscribedRef.current) return;
+    subscribedRef.current = true;
+
+    const channel = supabase
+      .channel('agent-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agent_tasks', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          // Update tasks list in-place
+          setTasks((prev) => {
+            const updated = payload.new as any;
+            if (payload.eventType === 'INSERT') {
+              return [updated, ...prev];
+            }
+            if (payload.eventType === 'UPDATE') {
+              return prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+            }
+            if (payload.eventType === 'DELETE') {
+              const old = payload.old as any;
+              return prev.filter((t) => t.id !== old.id);
+            }
+            return prev;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agent_plans', filter: `user_id=eq.${user.id}` },
+        () => {
+          // Reload tasks to get updated plan data (plans are nested)
+          loadTasks();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'agent_execution_logs', filter: `user_id=eq.${user.id}` },
+        () => {
+          // New log entry — refresh if user is viewing details
+          loadTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscribedRef.current = false;
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadTasks]);
 
   return {
     tasks,
