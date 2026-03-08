@@ -93,6 +93,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
     startAudioVisualization();
     
     const started = startSpeechRecognition({
+      continuous: true,
       onResult: (text) => {
         setTranscript(text);
         lastSpeechRef.current = Date.now();
@@ -108,7 +109,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
             stopAudioVisualization();
             processVoiceInput(text.trim());
           }
-        }, 2000);
+        }, 2500);
       },
       onStart: () => setIsListening(true),
       onEnd: () => {
@@ -121,11 +122,13 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
       onError: (error) => {
         setIsListening(false);
         stopAudioVisualization();
-        toast({
-          title: "Voice Error",
-          description: error,
-          variant: "destructive"
-        });
+        if (error !== 'No speech detected. Please try again.') {
+          toast({
+            title: "Voice Error",
+            description: error,
+            variant: "destructive"
+          });
+        }
       }
     });
 
@@ -156,6 +159,11 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
     setStatusPhrase(getRandomPhrase(bongoResponses.thinking));
 
     try {
+      // Get authenticated user token
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
@@ -163,7 +171,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
           headers: {
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             messages: [{ role: 'user', content: text }],

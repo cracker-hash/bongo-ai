@@ -3,17 +3,17 @@ import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/b
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // ElevenLabs voices for podcast
 const VOICES = {
-  host: '6lCwbsX1yVjD49QmpkTR', // Host voice
-  guest: 'bYTqZQo3Jz7LQtmGTgwi', // Guest voice
-  narrator: 'onwK4e9ZLuTAKqWW03F9', // Daniel - narrator
-  professional: 'CwhRBWXzGAHq8TQ4Fs17', // Roger - professional
-  engaging: 'JBFqnCBsd6RMkjVDRZzb', // George - engaging
-  female: 'EXAVITQu4vr4xnSDxMaL', // Sarah - female
+  host: '6lCwbsX1yVjD49QmpkTR',
+  guest: 'bYTqZQo3Jz7LQtmGTgwi',
+  narrator: 'onwK4e9ZLuTAKqWW03F9',
+  professional: 'CwhRBWXzGAHq8TQ4Fs17',
+  engaging: 'JBFqnCBsd6RMkjVDRZzb',
+  female: 'EXAVITQu4vr4xnSDxMaL',
 };
 
 serve(async (req) => {
@@ -39,12 +39,10 @@ serve(async (req) => {
 
     switch (action) {
       case 'create-podcast': {
-        // ElevenLabs Podcast Studio with conversation mode
         console.log('Creating podcast with ElevenLabs Studio:', title);
         
         const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
         
-        // Use OpenRouter if available, fallback to OpenAI
         if (!OPENROUTER_API_KEY && !OPENAI_API_KEY) {
           throw new Error('No API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)');
         }
@@ -143,7 +141,7 @@ Guidelines:
               headers,
               body: JSON.stringify({
                 text: turn.text,
-                model_id: 'eleven_turbo_v2_5',
+                model_id: 'eleven_multilingual_v2',
                 voice_settings: {
                   stability: 0.65,
                   similarity_boost: 0.75,
@@ -160,13 +158,7 @@ Guidelines:
           }
 
           audioBuffers.push(await audioResponse.arrayBuffer());
-          
-          // Add small pause between speakers
-          if (i < turns.length - 1) {
-            // 300ms of silence (MP3 compatible)
-            const silenceBuffer = new Uint8Array(300 * 16).buffer;
-            audioBuffers.push(silenceBuffer);
-          }
+          // No fake silence injection — ElevenLabs adds natural pauses at sentence boundaries
         }
 
         // Combine all audio buffers
@@ -186,22 +178,18 @@ Guidelines:
           audioContent: base64Audio,
           script: conversationScript,
           title,
-          duration: Math.round(totalLength / (16000 * 2)), // Rough estimate
+          duration: Math.round(totalLength / (16000 * 2)),
           message: 'Podcast created successfully!',
         };
         break;
       }
 
       case 'voice-to-voice': {
-        // Voice Changer - convert one voice to another
         console.log('Voice to voice conversion');
-        
-        // This requires audio input - not supported via text
         throw new Error('Voice-to-voice requires audio input. Please use the voice recording feature.');
       }
 
       case 'sound-effect': {
-        // Generate sound effects
         console.log('Generating sound effect:', text);
         
         const response = await fetch('https://api.elevenlabs.io/v1/sound-generation', {
@@ -232,7 +220,6 @@ Guidelines:
       }
 
       case 'text-to-speech': {
-        // Standard TTS with voice selection
         console.log('Text to speech:', text?.slice(0, 50));
         
         const voiceId = VOICES[hostVoice as keyof typeof VOICES] || VOICES.narrator;
@@ -244,7 +231,7 @@ Guidelines:
             headers,
             body: JSON.stringify({
               text,
-              model_id: 'eleven_turbo_v2_5',
+              model_id: 'eleven_multilingual_v2',
               voice_settings: {
                 stability: 0.5,
                 similarity_boost: 0.75,
