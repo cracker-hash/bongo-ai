@@ -280,95 +280,63 @@ async function main() {
 }
 
 main().catch(console.error);`,
-  express: `// WISER AI - Express.js Middleware & Routes
-// Production-ready API proxy with rate limiting and caching
-
+  express: `// WISER AI - Express.js API Proxy
 const express = require('express');
-const axios = require('axios');
 const rateLimit = require('express-rate-limit');
-const NodeCache = require('node-cache');
 
 const app = express();
 app.use(express.json());
 
-// Configuration
 const WISER_API_KEY = process.env.WISER_API_KEY;
-const API_URL = '${SUPABASE_FUNCTIONS_URL}';
+const API_URL = '${SUPABASE_FUNCTIONS_URL}/api-gateway';
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 
-// Response caching
-const cache = new NodeCache({ stdTTL: 300 });
-
-// Middleware for API key validation
-const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey) {
-    return res.status(401).json({ error: 'API key required' });
-  }
-  // Add your API key validation logic here
-  next();
-};
-
-// Chat endpoint with caching
-app.post('/api/chat', limiter, validateApiKey, async (req, res) => {
+app.post('/api/chat', limiter, async (req, res) => {
   try {
-    const cacheKey = JSON.stringify(req.body);
-    const cached = cache.get(cacheKey);
-    
-    if (cached && !req.body.stream) {
-      return res.json(cached);
-    }
-
-    const response = await axios.post(\`\${API_URL}/chat\`, {
-      model: 'wiser-pro',
-      messages: req.body.messages,
-      temperature: req.body.temperature || 0.7,
-      max_tokens: req.body.max_tokens || 2048,
-      stream: false
-    }, {
+    const response = await fetch(API_URL, {
+      method: 'POST',
       headers: {
         'Authorization': \`Bearer \${WISER_API_KEY}\`,
         'Content-Type': 'application/json'
       },
-      timeout: 30000
+      body: JSON.stringify({
+        endpoint: 'chat/completions',
+        messages: req.body.messages,
+        temperature: req.body.temperature || 0.7,
+        max_tokens: req.body.max_tokens || 2048
+      })
     });
-
-    // Cache non-streaming responses
-    if (!req.body.stream) {
-      cache.set(cacheKey, response.data);
-    }
-
-    res.json(response.data);
+    const data = await response.json();
+    res.status(response.status).json(data);
   } catch (error) {
-    console.error('WISER API Error:', error.response?.data || error.message);
-    res.status(error.response?.status || 500).json({
-      error: error.response?.data?.error || 'Internal server error'
-    });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Webhook receiver
-app.post('/webhooks/wiser', express.raw({ type: 'application/json' }), (req, res) => {
-  const signature = req.headers['x-wiser-signature'];
-  // Verify signature and process webhook
-  console.log('Webhook received:', JSON.parse(req.body));
-  res.json({ received: true });
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+app.post('/api/images', limiter, async (req, res) => {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${WISER_API_KEY}\`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        endpoint: 'images/generate',
+        prompt: req.body.prompt,
+        size: req.body.size || '1024x1024'
+      })
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(\`WISER AI Proxy running on port \${PORT}\`);
-});`,
+app.listen(PORT, () => console.log(\`Proxy on port \${PORT}\`));`,
   php: `<?php
 /**
  * WISER AI - PHP SDK
