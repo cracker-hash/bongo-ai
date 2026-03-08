@@ -10,7 +10,7 @@ import { SchedulesPanel } from './SchedulesPanel';
 import { 
   Bot, Play, Pause, RotateCcw, CheckCircle2, XCircle, 
   Loader2, Brain, Eye, Hand, Cog, Search, Clock, 
-  ListTodo, ChevronRight, StopCircle, RefreshCw, Zap
+  ListTodo, ChevronRight, StopCircle, RefreshCw, Zap, Timer
 } from 'lucide-react';
 import { useAgentTasks, AgentTask, AgentPhase } from '@/hooks/useAgentTasks';
 import { useAuth } from '@/contexts/AuthContext';
