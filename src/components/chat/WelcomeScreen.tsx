@@ -237,6 +237,11 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
 
   const handleToolClick = (toolId: ToolType) => {
     setSelectedTool(selectedTool === toolId ? 'default' : toolId);
+    // Open builder panel for website/apps tools
+    if (toolId === 'website' || toolId === 'apps') {
+      setCurrentMode('coding');
+      setBuilderOpen(true);
+    }
   };
 
   const handlePromptClick = (prompt: string) => {
