@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Folder,
   Image as ImageIcon,
-  Library
+  Library,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
