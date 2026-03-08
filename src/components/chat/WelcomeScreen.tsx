@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { 
   Presentation, 
   Globe, 
@@ -172,11 +174,64 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
   const { isAuthenticated, setShowAuthModal, user } = useAuth();
+  const navigate = useNavigate();
   const [showConnectors, setShowConnectors] = useState(false);
   const [connectorSearch, setConnectorSearch] = useState('');
   const [selectedTool, setSelectedTool] = useState<ToolType>('default');
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [adSlideIndex, setAdSlideIndex] = useState(0);
+
+  const handleMoreToolClick = (label: string) => {
+    setShowMoreTools(false);
+    switch (label) {
+      case 'Schedule task':
+        // Open ManusPanel via the TopBar bot icon - dispatch custom event
+        window.dispatchEvent(new CustomEvent('open-manus-panel'));
+        break;
+      case 'Wide Research':
+        onPromptClick('Conduct a wide research on: ', 'research');
+        break;
+      case 'Chat mode':
+        onPromptClick('', 'conversation');
+        break;
+      case 'Spreadsheet':
+        onPromptClick('Create a spreadsheet with the following data: ', 'creative');
+        break;
+      case 'Visualization':
+        onPromptClick('Create a data visualization chart for: ', 'creative');
+        break;
+      case 'Video':
+        onPromptClick('Generate a video: ', 'creative');
+        break;
+      case 'Audio':
+        onPromptClick('Generate audio: ', 'creative');
+        break;
+      case 'Playbook':
+        toast.info('Playbook templates coming soon!');
+        break;
+      default:
+        toast.info('Coming soon!');
+    }
+  };
+
+  const handleConnectorClick = (connectorName: string) => {
+    switch (connectorName) {
+      case 'Gmail':
+      case 'Google Calendar':
+      case 'Google Drive':
+        setShowConnectors(false);
+        navigate('/connected-accounts');
+        break;
+      case 'My Browser':
+      case 'GitHub':
+      case 'Slack':
+      case 'Notion':
+        toast.info(`${connectorName} integration coming soon!`);
+        break;
+      default:
+        toast.info('Coming soon!');
+    }
+  };
 
   const handleToolClick = (toolId: ToolType) => {
     setSelectedTool(selectedTool === toolId ? 'default' : toolId);
@@ -281,7 +336,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                 <button
                   key={index}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left"
-                  onClick={() => setShowMoreTools(false)}
+                  onClick={() => handleMoreToolClick(tool.label)}
                 >
                   <tool.icon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">{tool.label}</span>
@@ -477,7 +532,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                   </p>
                 </div>
               </div>
-              <Button className="bg-white text-black hover:bg-white/90">Connect</Button>
+              <Button className="bg-white text-black hover:bg-white/90" onClick={() => toast.info('Browser connector coming soon!')}>Connect</Button>
             </div>
           </div>
 
@@ -523,6 +578,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                     <button
                       key={index}
                       className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 transition-colors text-left"
+                      onClick={() => handleConnectorClick(connector.name)}
                     >
                       <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
                         {typeof connector.icon === 'string' ? (
@@ -551,7 +607,10 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                 </p>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors text-left">
+                  <button 
+                    className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors text-left"
+                    onClick={() => toast.info('Custom API integration coming soon!')}
+                  >
                     <Plus className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium text-sm">Add custom API</span>
                   </button>
@@ -580,7 +639,7 @@ export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {
                   <p className="text-sm text-muted-foreground mb-4">
                     Connect Wiser AI to custom Model Context Protocol servers
                   </p>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => toast.info('MCP connections coming soon!')}>
                     <Plus className="h-4 w-4" />
                     Add MCP Connection
                   </Button>
