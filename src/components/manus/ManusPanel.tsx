@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SchedulesPanel } from './SchedulesPanel';
 import { 
   Bot, Play, Pause, RotateCcw, CheckCircle2, XCircle, 
   Loader2, Brain, Eye, Hand, Cog, Search, Clock, 
-  ListTodo, ChevronRight, StopCircle, RefreshCw, Zap
+  ListTodo, ChevronRight, StopCircle, RefreshCw, Zap, Timer
 } from 'lucide-react';
 import { useAgentTasks, AgentTask, AgentPhase } from '@/hooks/useAgentTasks';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,7 +140,7 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
         </div>
 
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tasks">
               <ListTodo className="h-4 w-4 mr-1.5" />
               Tasks ({tasks.length})
@@ -147,6 +148,10 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
             <TabsTrigger value="detail">
               <Eye className="h-4 w-4 mr-1.5" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="schedules">
+              <Timer className="h-4 w-4 mr-1.5" />
+              Schedules
             </TabsTrigger>
           </TabsList>
 
@@ -302,6 +307,10 @@ export function ManusPanel({ onClose }: ManusPanelProps) {
                 </div>
               )}
             </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="schedules">
+            <SchedulesPanel />
           </TabsContent>
         </Tabs>
       </CardContent>
