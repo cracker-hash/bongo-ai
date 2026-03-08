@@ -337,106 +337,58 @@ app.post('/api/images', limiter, async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(\`Proxy on port \${PORT}\`));`,
-  php: \`<?php
-/**
- * WISER AI - PHP Client (API Gateway)
- */
-
+  php: `<?php
+// WISER AI - PHP Client (API Gateway)
 namespace WiserAI;
 
 class Client {
-    private string \$apiKey;
-    private string \$baseUrl = '\${SUPABASE_FUNCTIONS_URL}/api-gateway';
-    private int \$timeout = 30;
+    private string $apiKey;
+    private string $baseUrl;
+    private int $timeout = 30;
 
-    public function __construct(string $apiKey) {
+    public function __construct(string $apiKey, string $baseUrl = '${SUPABASE_FUNCTIONS_URL}/api-gateway') {
         $this->apiKey = $apiKey;
+        $this->baseUrl = $baseUrl;
     }
 
-    /**
-     * Send a chat completion request
-     */
-    public function chat(array $messages, array $options = []): array {
-        $payload = [
-            'model' => $options['model'] ?? 'wiser-pro',
-            'messages' => $messages,
-            'temperature' => $options['temperature'] ?? 0.7,
-            'max_tokens' => $options['max_tokens'] ?? 2048,
-            'stream' => false
-        ];
-
-        return $this->request('POST', '/chat', $payload);
-    }
-
-    /**
-     * Generate an image from text
-     */
-    public function generateImage(string $prompt, array $options = []): array {
-        return $this->request('POST', '/images/generate', [
-            'prompt' => $prompt,
-            'size' => $options['size'] ?? '1024x1024',
-            'quality' => $options['quality'] ?? 'hd'
-        ]);
-    }
-
-    private function request(string $method, string $endpoint, array $data): array {
-        $ch = curl_init($this->baseUrl . $endpoint);
-        
+    public function request(string $endpoint, array $params = []): array {
+        $data = array_merge(['endpoint' => $endpoint], $params);
+        $ch = curl_init($this->baseUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeout,
-            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->apiKey,
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'X-Request-ID: ' . $this->generateRequestId()
+                'Content-Type: application/json'
             ],
             CURLOPT_POSTFIELDS => json_encode($data)
         ]);
-
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
         curl_close($ch);
-
-        if ($error) {
-            throw new \\Exception("cURL Error: $error");
-        }
-
         $result = json_decode($response, true);
-
-        if ($httpCode >= 400) {
-            throw new \\Exception($result['error'] ?? 'API request failed', $httpCode);
-        }
-
+        if ($httpCode >= 400) throw new \\Exception($result['error']['message'] ?? 'API error', $httpCode);
         return $result;
     }
 
-    private function generateRequestId(): string {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
+    public function chat(array $messages, array $options = []): array {
+        return $this->request('chat/completions', array_merge(['messages' => $messages], $options));
+    }
+
+    public function generateImage(string $prompt, array $options = []): array {
+        return $this->request('images/generate', array_merge(['prompt' => $prompt], $options));
     }
 }
 
-// Usage Example
+// Usage
 $wiser = new Client(getenv('WISER_API_KEY'));
-
-try {
-    $response = $wiser->chat([
-        ['role' => 'system', 'content' => 'You are a helpful assistant.'],
-        ['role' => 'user', 'content' => 'Explain quantum computing.']
-    ]);
-
-    echo $response['choices'][0]['message']['content'];
-} catch (\\Exception $e) {
-    error_log('WISER API Error: ' . $e->getMessage());
-}`,
+$response = $wiser->chat([
+    ['role' => 'system', 'content' => 'You are a helpful assistant.'],
+    ['role' => 'user', 'content' => 'Explain quantum computing.']
+]);
+echo $response['choices'][0]['message']['content'];
+?>`,
   java: `// WISER AI - Java SDK
 // Production-ready Java client with async support
 
