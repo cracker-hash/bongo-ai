@@ -229,6 +229,10 @@ async function executeTool(toolName: string, phase: AgentPhase, context: any, pr
       return await toolDataAnalysis(prevSummary, phase.description);
     case "summarize":
       return await toolSummarize(prevSummary || context.original_input);
+    case "scrape_and_summarize": {
+      const scrapeUrl = phase.description.match(/https?:\/\/[^\s]+/);
+      return await toolScrapeAndSummarize(scrapeUrl ? scrapeUrl[0] : `https://en.wikipedia.org/wiki/${encodeURIComponent(context.original_input)}`);
+    }
     case "text_generation":
     case "translate":
     default:
