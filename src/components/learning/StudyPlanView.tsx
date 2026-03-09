@@ -74,7 +74,7 @@ export function StudyPlanView() {
       )};
       // Persist to DB
       supabase.from('agent_tasks').update({
-        result: { tasks: updated.tasks }
+        result: { tasks: updated.tasks as any }
       }).eq('id', planId).then();
       return updated;
     }));

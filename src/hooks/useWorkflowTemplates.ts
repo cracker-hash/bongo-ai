@@ -48,7 +48,7 @@ export function useWorkflowTemplates() {
     if (!isAuthenticated || !user) return;
     try {
       const { error } = await supabase.from('workflow_templates').insert({
-        user_id: user.id, name, description, steps,
+        user_id: user.id, name, description, steps: steps as any,
       });
       if (error) throw error;
       toast.success('Workflow template saved!');
