@@ -461,7 +461,7 @@ async function analyzeAndPlan(input: string) {
         {
           role: "system",
           content: `You are a task planning AI. Given a user request, create a structured execution plan.
-Available tools: web_search, generate_code, create_file, browse_url, http_request, data_analysis, text_generation, summarize, translate.
+Available tools: web_search, generate_code, create_file, browse_url, http_request, data_analysis, text_generation, summarize, translate, scrape_and_summarize.
 Create 2-8 phases. Be specific and actionable. Each phase should use 1-2 tools max.`
         },
         { role: "user", content: input }
