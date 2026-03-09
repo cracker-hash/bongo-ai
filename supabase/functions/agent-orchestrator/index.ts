@@ -58,14 +58,30 @@ async function toolWebSearch(query: string): Promise<{ results: { title: string;
   return { results: [] };
 }
 
-async function toolHttpRequest(url: string, method = "GET"): Promise<{ status: number; body: string }> {
+async function toolHttpRequest(url: string, method = "GET"): Promise<{ status: number; body: string; extracted_text?: string }> {
   try {
     const resp = await fetch(url, { method, headers: { "User-Agent": "WiserAI-Agent/1.0" } });
     const body = await resp.text();
-    return { status: resp.status, body: body.slice(0, 5000) };
+    // Strip HTML tags to extract readable text
+    const extractedText = body.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 8000);
+    return { status: resp.status, body: body.slice(0, 3000), extracted_text: extractedText };
   } catch (e) {
     return { status: 0, body: e instanceof Error ? e.message : "Request failed" };
   }
+}
+
+async function toolScrapeAndSummarize(url: string): Promise<{ url: string; summary: string; keyPoints: string[] }> {
+  const pageData = await toolHttpRequest(url);
+  if (!pageData.extracted_text || pageData.status === 0) {
+    return { url, summary: "Failed to fetch page content", keyPoints: [] };
+  }
+  const summaryResult = await toolSummarize(pageData.extracted_text);
+  return { url, summary: summaryResult.summary, keyPoints: summaryResult.keyPoints };
 }
 
 async function toolGenerateCode(prompt: string, language: string): Promise<{ code: string; explanation: string }> {
@@ -213,6 +229,10 @@ async function executeTool(toolName: string, phase: AgentPhase, context: any, pr
       return await toolDataAnalysis(prevSummary, phase.description);
     case "summarize":
       return await toolSummarize(prevSummary || context.original_input);
+    case "scrape_and_summarize": {
+      const scrapeUrl = phase.description.match(/https?:\/\/[^\s]+/);
+      return await toolScrapeAndSummarize(scrapeUrl ? scrapeUrl[0] : `https://en.wikipedia.org/wiki/${encodeURIComponent(context.original_input)}`);
+    }
     case "text_generation":
     case "translate":
     default:
@@ -269,14 +289,33 @@ serve(async (req) => {
   }
 });
 
+// ─── Agent Memory ───
+
+async function loadAgentMemory(supabase: any, userId: string): Promise<Record<string, any>> {
+  const { data } = await supabase.from("agent_memory").select("key, value, category").eq("user_id", userId).order("updated_at", { ascending: false }).limit(20);
+  const memory: Record<string, any> = {};
+  (data || []).forEach((m: any) => { memory[m.key] = m.value; });
+  return memory;
+}
+
+async function saveAgentMemory(supabase: any, userId: string, key: string, value: any, category = "general") {
+  const { data: existing } = await supabase.from("agent_memory").select("id").eq("user_id", userId).eq("key", key).single();
+  if (existing) {
+    await supabase.from("agent_memory").update({ value, category, updated_at: new Date().toISOString() }).eq("id", existing.id);
+  } else {
+    await supabase.from("agent_memory").insert({ user_id: userId, key, value, category });
+  }
+}
+
 // ─── Task Handlers ───
 
 async function handleCreateTask(supabase: any, userId: string, input: string, capability?: string) {
+  const memory = await loadAgentMemory(supabase, userId);
   const analysis = await analyzeAndPlan(input);
 
   const { data: task, error: taskError } = await supabase
     .from("agent_tasks")
-    .insert({ user_id: userId, title: analysis.title, description: input, capability: capability || analysis.capability, context: { original_input: input, analysis }, status: "pending" })
+    .insert({ user_id: userId, title: analysis.title, description: input, capability: capability || analysis.capability, context: { original_input: input, analysis, memory }, status: "pending" })
     .select().single();
   if (taskError) throw new Error(`Failed to create task: ${taskError.message}`);
 
@@ -363,6 +402,13 @@ async function handleRunTask(supabase: any, userId: string, taskId: string) {
     }
   }
 
+  // Save key insights to agent memory
+  const lastResult = results[results.length - 1];
+  if (lastResult) {
+    const memoryKey = `task_${taskId}_result`;
+    await saveAgentMemory(supabase, userId, memoryKey, { summary: JSON.stringify(lastResult.result).slice(0, 1000), task_title: task.title }, "task_results");
+  }
+
   await supabase.from("agent_tasks").update({ status: "completed", completed_at: new Date().toISOString(), result: { phases: results } }).eq("id", taskId);
   await supabase.from("agent_plans").update({ phases, current_phase: phases.length, status: "completed" }).eq("id", plan.id);
 
@@ -415,7 +461,7 @@ async function analyzeAndPlan(input: string) {
         {
           role: "system",
           content: `You are a task planning AI. Given a user request, create a structured execution plan.
-Available tools: web_search, generate_code, create_file, browse_url, http_request, data_analysis, text_generation, summarize, translate.
+Available tools: web_search, generate_code, create_file, browse_url, http_request, data_analysis, text_generation, summarize, translate, scrape_and_summarize.
 Create 2-8 phases. Be specific and actionable. Each phase should use 1-2 tools max.`
         },
         { role: "user", content: input }

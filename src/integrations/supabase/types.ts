@@ -77,6 +77,36 @@ export type Database = {
           },
         ]
       }
+      agent_memory: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          user_id: string
+          value: Json
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          user_id: string
+          value?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          user_id?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       agent_plans: {
         Row: {
           created_at: string
@@ -479,6 +509,48 @@ export type Database = {
           },
         ]
       }
+      flashcards: {
+        Row: {
+          back: string
+          created_at: string
+          deck: string
+          ease_factor: number
+          front: string
+          id: string
+          interval_days: number
+          next_review_at: string
+          review_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          deck?: string
+          ease_factor?: number
+          front: string
+          id?: string
+          interval_days?: number
+          next_review_at?: string
+          review_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          deck?: string
+          ease_factor?: number
+          front?: string
+          id?: string
+          interval_days?: number
+          next_review_at?: string
+          review_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_images: {
         Row: {
           chat_id: string | null
@@ -513,6 +585,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      learning_progress: {
+        Row: {
+          created_at: string
+          id: string
+          last_studied: string | null
+          mastery_level: number
+          quiz_scores: Json | null
+          topic: string
+          total_sessions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_studied?: string | null
+          mastery_level?: number
+          quiz_scores?: Json | null
+          topic: string
+          total_sessions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_studied?: string | null
+          mastery_level?: number
+          quiz_scores?: Json | null
+          topic?: string
+          total_sessions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -752,6 +860,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      workflow_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          name: string
+          steps: Json
+          updated_at: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name: string
+          steps?: Json
+          updated_at?: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          steps?: Json
+          updated_at?: string
+          use_count?: number
+          user_id?: string
         }
         Relationships: []
       }

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -82,6 +83,15 @@ const pricingPlans = [
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to chat
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate('/chat', { replace: true });
+    });
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}

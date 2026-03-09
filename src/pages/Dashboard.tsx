@@ -5,8 +5,11 @@ import { TopBar } from '@/components/layout/TopBar';
 import { ApiKeyManagement } from '@/components/apikeys/ApiKeyManagement';
 import { UsageDashboard } from '@/components/usage/UsageDashboard';
 import { CreditsDashboard } from '@/components/credits/CreditsDashboard';
+import { FlashcardReview } from '@/components/flashcards/FlashcardReview';
+import { ProgressMap } from '@/components/learning/ProgressMap';
+import { StudyPlanView } from '@/components/learning/StudyPlanView';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { Key, BarChart3, CreditCard, Coins } from 'lucide-react';
+import { Key, BarChart3, CreditCard, Coins, Layers, TrendingUp, CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getTierByProductId, TierKey } from '@/lib/stripeConfig';
 import { Button } from '@/components/ui/button';
@@ -67,6 +70,18 @@ function DashboardContent() {
                 <Key className="h-4 w-4" />
                 API Keys
               </TabsTrigger>
+              <TabsTrigger value="flashcards" className="gap-2">
+                <Layers className="h-4 w-4" />
+                Flashcards
+              </TabsTrigger>
+              <TabsTrigger value="progress" className="gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Progress
+              </TabsTrigger>
+              <TabsTrigger value="studyplans" className="gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Study Plans
+              </TabsTrigger>
             </TabsList>
             <Button variant="outline" onClick={() => navigate('/pricing')} className="gap-2">
               <CreditCard className="h-4 w-4" />
@@ -84,6 +99,18 @@ function DashboardContent() {
 
           <TabsContent value="apikeys">
             <ApiKeyManagement />
+          </TabsContent>
+
+          <TabsContent value="flashcards">
+            <FlashcardReview />
+          </TabsContent>
+
+          <TabsContent value="progress">
+            <ProgressMap />
+          </TabsContent>
+
+          <TabsContent value="studyplans">
+            <StudyPlanView />
           </TabsContent>
         </Tabs>
       </main>
