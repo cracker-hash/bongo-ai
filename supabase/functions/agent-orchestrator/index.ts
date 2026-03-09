@@ -382,6 +382,13 @@ async function handleRunTask(supabase: any, userId: string, taskId: string) {
     }
   }
 
+  // Save key insights to agent memory
+  const lastResult = results[results.length - 1];
+  if (lastResult) {
+    const memoryKey = `task_${taskId}_result`;
+    await saveAgentMemory(supabase, userId, memoryKey, { summary: JSON.stringify(lastResult.result).slice(0, 1000), task_title: task.title }, "task_results");
+  }
+
   await supabase.from("agent_tasks").update({ status: "completed", completed_at: new Date().toISOString(), result: { phases: results } }).eq("id", taskId);
   await supabase.from("agent_plans").update({ phases, current_phase: phases.length, status: "completed" }).eq("id", plan.id);
 

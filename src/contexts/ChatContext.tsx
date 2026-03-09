@@ -187,8 +187,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                          lowerContent.includes('test me on ') ||
                          lowerContent.includes('test my knowledge');
     
+    // Auto-detect flashcard intent
+    const isFlashcardIntent = lowerContent.includes('create flashcards') ||
+                              lowerContent.includes('make flashcards') ||
+                              lowerContent.includes('generate flashcards') ||
+                              lowerContent.startsWith('flashcards on') ||
+                              lowerContent.startsWith('flashcards about');
+    
+    // Auto-detect study plan intent
+    const isStudyPlanIntent = lowerContent.includes('create a study plan') ||
+                              lowerContent.includes('make a study plan') ||
+                              lowerContent.includes('study plan for');
+    
     if (isQuizIntent && currentMode !== 'quiz') {
       setCurrentMode('quiz');
+    }
+    if (isFlashcardIntent && currentMode !== 'study') {
+      setCurrentMode('study');
     }
     
     // Check request types
