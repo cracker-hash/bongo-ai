@@ -269,14 +269,33 @@ serve(async (req) => {
   }
 });
 
+// ─── Agent Memory ───
+
+async function loadAgentMemory(supabase: any, userId: string): Promise<Record<string, any>> {
+  const { data } = await supabase.from("agent_memory").select("key, value, category").eq("user_id", userId).order("updated_at", { ascending: false }).limit(20);
+  const memory: Record<string, any> = {};
+  (data || []).forEach((m: any) => { memory[m.key] = m.value; });
+  return memory;
+}
+
+async function saveAgentMemory(supabase: any, userId: string, key: string, value: any, category = "general") {
+  const { data: existing } = await supabase.from("agent_memory").select("id").eq("user_id", userId).eq("key", key).single();
+  if (existing) {
+    await supabase.from("agent_memory").update({ value, category, updated_at: new Date().toISOString() }).eq("id", existing.id);
+  } else {
+    await supabase.from("agent_memory").insert({ user_id: userId, key, value, category });
+  }
+}
+
 // ─── Task Handlers ───
 
 async function handleCreateTask(supabase: any, userId: string, input: string, capability?: string) {
+  const memory = await loadAgentMemory(supabase, userId);
   const analysis = await analyzeAndPlan(input);
 
   const { data: task, error: taskError } = await supabase
     .from("agent_tasks")
-    .insert({ user_id: userId, title: analysis.title, description: input, capability: capability || analysis.capability, context: { original_input: input, analysis }, status: "pending" })
+    .insert({ user_id: userId, title: analysis.title, description: input, capability: capability || analysis.capability, context: { original_input: input, analysis, memory }, status: "pending" })
     .select().single();
   if (taskError) throw new Error(`Failed to create task: ${taskError.message}`);
 
