@@ -83,6 +83,15 @@ const pricingPlans = [
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to chat
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate('/chat', { replace: true });
+    });
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
