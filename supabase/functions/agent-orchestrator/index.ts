@@ -58,14 +58,30 @@ async function toolWebSearch(query: string): Promise<{ results: { title: string;
   return { results: [] };
 }
 
-async function toolHttpRequest(url: string, method = "GET"): Promise<{ status: number; body: string }> {
+async function toolHttpRequest(url: string, method = "GET"): Promise<{ status: number; body: string; extracted_text?: string }> {
   try {
     const resp = await fetch(url, { method, headers: { "User-Agent": "WiserAI-Agent/1.0" } });
     const body = await resp.text();
-    return { status: resp.status, body: body.slice(0, 5000) };
+    // Strip HTML tags to extract readable text
+    const extractedText = body.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 8000);
+    return { status: resp.status, body: body.slice(0, 3000), extracted_text: extractedText };
   } catch (e) {
     return { status: 0, body: e instanceof Error ? e.message : "Request failed" };
   }
+}
+
+async function toolScrapeAndSummarize(url: string): Promise<{ url: string; summary: string; keyPoints: string[] }> {
+  const pageData = await toolHttpRequest(url);
+  if (!pageData.extracted_text || pageData.status === 0) {
+    return { url, summary: "Failed to fetch page content", keyPoints: [] };
+  }
+  const summaryResult = await toolSummarize(pageData.extracted_text);
+  return { url, summary: summaryResult.summary, keyPoints: summaryResult.keyPoints };
 }
 
 async function toolGenerateCode(prompt: string, language: string): Promise<{ code: string; explanation: string }> {
