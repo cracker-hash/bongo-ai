@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const VOICE_IDS: Record<string, string> = {
-  'rachel': 'EXAVITQu4vr4xnSDxMaL',
+  'rachel': '21m00Tcm4TlvDq8ikWAM',
   'sarah': 'EXAVITQu4vr4xnSDxMaL',
   'roger': 'CwhRBWXzGAHq8TQ4Fs17',
   'brian': 'nPczCjzI2devNBz1zQrb',

@@ -96,6 +96,66 @@ let currentAudio: HTMLAudioElement | null = null;
 /**
  * Speaks text using ElevenLabs API
  */
+async function fetchElevenLabsTTS(cleanedText: string, voice: string, speed: number, token: string): Promise<string> {
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({
+        text: cleanedText,
+        voiceId: voice || 'sarah',
+        speed: speed || 1,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'TTS request failed');
+  }
+
+  const data = await response.json();
+  if (!data.audioContent) {
+    throw new Error('No audio content received');
+  }
+  return data.audioContent;
+}
+
+/**
+ * Plays base64 audio content
+ */
+function playBase64Audio(base64: string, options: SpeakOptions): void {
+  const audioUrl = `data:audio/mpeg;base64,${base64}`;
+  
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+
+  const audio = new Audio(audioUrl);
+  currentAudio = audio;
+  
+  audio.onended = () => {
+    currentAudio = null;
+    options.onEnd?.();
+  };
+  
+  audio.onerror = () => {
+    currentAudio = null;
+    options.onError?.(new Error('Audio playback failed'));
+  };
+
+  audio.play();
+}
+
+/**
+ * Speaks text using ElevenLabs API with retry + Web Speech fallback
+ */
 async function speakWithElevenLabs(options: SpeakOptions): Promise<void> {
   const cleanedText = cleanTextForSpeech(options.text);
   
@@ -104,69 +164,35 @@ async function speakWithElevenLabs(options: SpeakOptions): Promise<void> {
     return;
   }
 
-  try {
-    options.onStart?.();
-    
-    const token = await getAuthToken();
-    
-    if (!token) {
-      throw new Error('Please sign in to use text-to-speech');
-    }
-    
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({
-          text: cleanedText,
-          voiceId: options.voice || 'sarah',
-          speed: options.rate || 1,
-        }),
-      }
-    );
+  // Fire onStart immediately so UI responds on first click
+  options.onStart?.();
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'TTS request failed');
-    }
-
-    const data = await response.json();
-    
-    if (!data.audioContent) {
-      throw new Error('No audio content received');
-    }
-
-    // Use data URI for reliable audio playback
-    const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
-    
-    // Stop any current audio
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
-    }
-
-    const audio = new Audio(audioUrl);
-    currentAudio = audio;
-    
-    audio.onended = () => {
-      currentAudio = null;
-      options.onEnd?.();
-    };
-    
-    audio.onerror = () => {
-      currentAudio = null;
-      options.onError?.(new Error('Audio playback failed'));
-    };
-
-    await audio.play();
-  } catch (error) {
-    options.onError?.(error instanceof Error ? error : new Error('TTS failed'));
+  const token = await getAuthToken();
+  if (!token) {
+    // Fallback to browser speech if not signed in
+    console.warn('TTS: No auth token, falling back to browser voice');
+    speakWithWebSpeech(options);
+    return;
   }
+
+  // Try ElevenLabs with one retry
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const audioContent = await fetchElevenLabsTTS(cleanedText, options.voice || 'sarah', options.rate || 1, token);
+      playBase64Audio(audioContent, options);
+      return; // Success
+    } catch (error) {
+      console.warn(`TTS attempt ${attempt + 1} failed:`, error);
+      if (attempt === 0) {
+        // Wait briefly before retry
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  // Both attempts failed — fallback to Web Speech API
+  console.warn('TTS: ElevenLabs unavailable, using browser voice');
+  speakWithWebSpeech({ ...options, onStart: undefined }); // onStart already fired
 }
 
 /**
