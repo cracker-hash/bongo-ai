@@ -1,45 +1,30 @@
 
 
-## Plan: Add New API Key, Remove AI Model Dropdown, Fix Errors
+## Plan: Fix TTS One-Click Playback and Voice Switching
 
-### 1. Remove AI Model Dropdown from ChatInput
+### Root Cause
+The edge function logs show ElevenLabs returning **401 "detected_unusual_activity"** errors intermittently — their free tier rate-limits aggressively. The current code has **no retry or fallback**, so it just throws "Text-to-speech failed" on the first attempt. The 5th click works because ElevenLabs occasionally lets a request through.
 
-The `ChatInput.tsx` component (lines 518-547) has a "Model Dropdown" that lets users pick AI models (GPT-4o, Claude, Gemini, etc.). This will be completely removed.
+### Fix Strategy
 
-**Changes to `src/components/chat/ChatInput.tsx`:**
-- Remove the Model Dropdown section (lines 518-547)
-- Remove unused imports: `MODEL_INFO`, `AIModel` from `@/types/chat` (line 26)
-- Remove the `models` variable (line 310)
-- Remove `currentModel` and `setCurrentModel` from the `useChat()` destructuring (line 89)
+**1. Add automatic fallback in `src/lib/textToSpeech.ts`**
+- When `speakWithElevenLabs` fails (any error), **immediately retry once**
+- If retry also fails, **auto-fallback to Web Speech API** so the user always hears speech on first click
+- Show a subtle toast saying "Using browser voice" so user knows it fell back
 
-### 2. Fix TopBar `useChatSafe` to Use Context Directly
+**2. Fix voice ID mapping**
+- `rachel` and `sarah` currently map to the **same** ElevenLabs voice ID (`EXAVITQu4vr4xnSDxMaL`). Fix `rachel` to use her correct ID (`21m00Tcm4TlvDq8ikWAM`)
+- Ensure all 12 voices in `ELEVENLABS_VOICES` list have unique, correct IDs
 
-The `TopBar.tsx` uses `require()` which can fail in Vite/ESM. It should use the exported `ChatContext` with `useContext` like the Sidebar does.
+**3. Same fix in the edge function `supabase/functions/elevenlabs-tts/index.ts`**
+- Fix the duplicate `rachel`/`sarah` voice ID mapping to match
 
-**Changes to `src/components/layout/TopBar.tsx`:**
-- Import `ChatContext` from `@/contexts/ChatContext` and `useContext` from React
-- Replace the `require`-based `useChatSafe` with a context-based version that returns defaults when outside the provider
+**4. Ensure instant start**
+- The `onStart` callback already fires correctly — the fallback ensures it always fires on first click instead of erroring out
 
-### 3. Add API Key Management Access
+### Files Changed
+- `src/lib/textToSpeech.ts` — Add retry + Web Speech fallback in `speakWithElevenLabs`, fix rachel voice ID
+- `supabase/functions/elevenlabs-tts/index.ts` — Fix rachel voice ID
 
-The API Key management already exists at `src/components/apikeys/ApiKeyManagement.tsx` and is accessible via the Dashboard page (`/dashboard` -> "API Keys" tab). The request is to make it easier to create a new API key. We'll add a quick-access button/link in the Dashboard or ensure the flow is smooth.
-
-Since the `ApiKeyManagement` component already has full CRUD functionality (create, view, delete API keys), no database changes are needed. The feature is already working -- we just need to ensure it's accessible without errors.
-
-### Technical Details
-
-**File: `src/components/chat/ChatInput.tsx`**
-- Remove `MODEL_INFO, AIModel` from import on line 26
-- Remove `currentModel, setCurrentModel` from useChat() on line 89
-- Remove `const models = ...` on line 310
-- Delete the entire Model Dropdown block (lines 518-547)
-
-**File: `src/components/layout/TopBar.tsx`**
-- Replace the `useChatSafe` function (lines 26-34) to use `ChatContext` with `useContext` instead of `require`
-- Import `ChatContext` and `useContext`
-
-### Error Prevention
-- Both Sidebar and TopBar will use the same safe pattern: check if `ChatContext` is undefined and return defaults
-- No `require()` calls which can break in Vite ESM builds
-- The AI model selection is cleanly removed without leaving orphan references
+### No database changes needed.
 
