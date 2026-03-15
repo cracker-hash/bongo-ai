@@ -72,7 +72,7 @@ export function OnlineIndicator() {
   const [showOnline, setShowOnline] = useState(false);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     
     const unsubscribe = onOnlineStatusChange((online) => {
       if (online) {

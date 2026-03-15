@@ -102,7 +102,7 @@ export function VoiceConversation({ onClose }: VoiceConversationProps) {
   const [audioLevel, setAudioLevel] = useState(0);
   const { currentMode } = useChat();
   
-  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSpeechRef = useRef<number>(Date.now());
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
