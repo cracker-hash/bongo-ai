@@ -86,46 +86,62 @@ serve(async (req) => {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      // Request stitching context
       const previous_text = i > 0 ? chunks[i - 1].slice(-200) : undefined;
       const next_text = i < chunks.length - 1 ? chunks[i + 1].slice(0, 200) : undefined;
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}?output_format=mp3_22050_32`,
-        {
-          method: 'POST',
-          headers: {
-            'xi-api-key': ELEVENLABS_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: chunk,
-            model_id: 'eleven_turbo_v2_5',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.3,
-              use_speaker_boost: true,
-              speed: speechSpeed,
+      let chunkAudio: ArrayBuffer | null = null;
+
+      // Retry up to 3 times per chunk with increasing delay
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const response = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}?output_format=mp3_22050_32`,
+          {
+            method: 'POST',
+            headers: {
+              'xi-api-key': ELEVENLABS_API_KEY,
+              'Content-Type': 'application/json',
             },
-            ...(previous_text && { previous_text }),
-            ...(next_text && { next_text }),
-          }),
+            body: JSON.stringify({
+              text: chunk,
+              model_id: 'eleven_turbo_v2_5',
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.3,
+                use_speaker_boost: true,
+                speed: speechSpeed,
+              },
+              ...(previous_text && { previous_text }),
+              ...(next_text && { next_text }),
+            }),
+          }
+        );
+
+        console.log(`ElevenLabs chunk ${i + 1}/${chunks.length} attempt ${attempt + 1} status: ${response.status}`);
+
+        if (response.ok) {
+          chunkAudio = await response.arrayBuffer();
+          break;
         }
-      );
 
-      console.log(`ElevenLabs chunk ${i + 1}/${chunks.length} status: ${response.status}`);
-
-      if (!response.ok) {
         const errorText = await response.text();
-        console.error('ElevenLabs API error:', response.status, errorText);
+        console.warn(`ElevenLabs attempt ${attempt + 1} error:`, response.status, errorText);
+
+        if (attempt < 2) {
+          // Wait before retry: 800ms, then 1600ms
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+
+      if (!chunkAudio) {
+        console.error(`All 3 attempts failed for chunk ${i + 1}`);
         return new Response(JSON.stringify({ error: 'Text-to-speech failed' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      audioBuffers.push(await response.arrayBuffer());
+      audioBuffers.push(chunkAudio);
     }
 
     // Concatenate all audio buffers
