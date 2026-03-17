@@ -46,7 +46,7 @@ export async function streamChat({
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers,
-      body: JSON.stringify({ messages: messages.slice(-80), mode, model }),
+      body: JSON.stringify({ messages: messages.slice(-150), mode, model }),
     });
 
     if (!resp.ok) {
