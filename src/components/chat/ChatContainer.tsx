@@ -265,13 +265,7 @@ export function ChatContainer() {
   );
 
   return (
-    <div
-      className="h-[calc(100vh-64px)] transition-all duration-300"
-      style={{
-        marginLeft: sidebarOpen ? '288px' : '0',
-        width: sidebarOpen ? 'calc(100% - 288px)' : '100%'
-      }}
-    >
+    <div className="h-[calc(100vh-64px)] transition-all duration-300">
       {builderOpen && !isMobile ? (
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel defaultSize={50} minSize={30}>
