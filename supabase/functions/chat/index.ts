@@ -12,11 +12,11 @@ const corsHeaders = {
 // Input validation schema
 const MessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
-  content: z.union([z.string().max(50000), z.array(z.any())])
+  content: z.union([z.string().max(100000), z.array(z.any())])
 });
 
 const ChatRequestSchema = z.object({
-  messages: z.array(MessageSchema).min(1).max(100),
+  messages: z.array(MessageSchema).min(1).max(200),
   mode: z.enum(['conversation', 'study', 'quiz', 'research', 'game', 'creative', 'coding']).optional(),
   model: z.string().max(50).optional(),
   generateImage: z.boolean().optional(),
