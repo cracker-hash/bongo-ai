@@ -221,10 +221,7 @@ export function Sidebar() {
       <div className="flex-1 min-w-0">
         <p className="text-sm text-sidebar-foreground truncate">{chat.name}</p>
       </div>
-      <div className={cn(
-        "transition-opacity duration-200",
-        currentChatId === chat.id ? "opacity-100" : "opacity-0 group-hover/chat:opacity-100"
-      )}>
+      <div className="opacity-100">
         <ChatMenu
           chatId={chat.id}
           chatName={chat.name}
