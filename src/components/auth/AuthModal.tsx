@@ -81,10 +81,26 @@ export function AuthModal() {
   };
 
   const handleGoogleSignIn = async () => {
-    toast({
-      title: 'Coming Soon',
-      description: 'Google sign-in is temporarily unavailable. Please use email and password.',
-    });
+    setIsGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        toast({
+          title: 'Google Sign-In Failed',
+          description: result.error || 'Could not sign in with Google. Please try again.',
+          variant: 'destructive',
+        });
+      }
+      // On success the OAuth broker redirects the page; no further UI needed.
+    } catch (e) {
+      toast({
+        title: 'Google Sign-In Failed',
+        description: e instanceof Error ? e.message : 'Unexpected error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const handleClose = () => {
