@@ -1,30 +1,20 @@
 
+The dots show `opacity-60` in code but user says they're invisible. Looking at the screenshot — the chat items have no visible dots at all, even on the active "You Whatsapp" item.
 
-The user wants the 3-dot menu on chat history items to:
-1. Always be visible (not just on hover)
-2. Show a dropdown matching the uploaded screenshot: Share, Start a group chat, Rename, Move to project (with submenu arrow), Pin chat, Archive, Delete (red)
+Likely cause: The `ChatMenu` component isn't being rendered in the Sidebar, OR the button color (`text-muted-foreground`) blends into the dark background making 60% opacity effectively invisible.
 
-Looking at the existing `ChatMenu.tsx` — the dropdown content already matches the screenshot perfectly (same items, same order, same icons, Delete in red). The only issue is the trigger button visibility.
-
-Current trigger classes:
-```
-opacity-0 group-hover/chat:opacity-100
-```
-
-This hides dots until hover. Need to make them always visible.
-
-I need to find where ChatMenu is used in the Sidebar to confirm the `group/chat` wrapper exists and check styling consistency.
+I need to inspect `Sidebar.tsx` to confirm ChatMenu is actually rendered next to each chat item.
 
 ## Plan
 
-### Single change in `src/components/chat/ChatMenu.tsx`
+1. **Verify ChatMenu is rendered** in `src/components/layout/Sidebar.tsx` for each chat history row. If missing, wire it in.
 
-Update the `DropdownMenuTrigger` Button className:
-- Remove `opacity-0 group-hover/chat:opacity-100`
-- Replace with `opacity-60 hover:opacity-100` so dots are always visible but subtle, brightening on hover
+2. **Fix visibility** in `src/components/chat/ChatMenu.tsx`:
+   - Change `opacity-60` → `opacity-100` (always fully visible)
+   - Change `text-muted-foreground` → `text-sidebar-foreground/70` so dots have proper contrast against the dark sidebar
+   - Keep `hover:bg-sidebar-accent` for hover feedback
+
+3. **Ensure layout** — the chat row must use `flex items-center justify-between` so the dots sit on the right side of each item (as in the original screenshot reference).
 
 ### Result
-- Three dots permanently visible on every chat history item
-- Clicking opens the existing dropdown (already matches screenshot exactly: Share, Start a group chat, Rename, Move to project ▸, Pin chat, Archive, Delete)
-- No other files need changes — the dropdown content is already implemented correctly
-
+Three dots clearly visible in light gray on every chat history item at all times, brightening on hover, opening the existing dropdown on click.
