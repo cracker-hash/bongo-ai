@@ -253,7 +253,7 @@ export function ChatMenu({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 opacity-60 hover:opacity-100 shrink-0 hover:bg-sidebar-accent text-muted-foreground hover:text-sidebar-foreground transition-all duration-200"
+            className="h-7 w-7 shrink-0 hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground transition-all duration-200"
             onClick={(e) => e.stopPropagation()}
             aria-label="Chat options"
           >
