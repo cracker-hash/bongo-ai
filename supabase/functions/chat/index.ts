@@ -604,15 +604,8 @@ ${voiceEnhancement}`
       { name: initialProvider, apiUrl, apiKey, model: finalModel, extraHeaders },
     ];
 
-    if (initialProvider === 'openrouter' && LOVABLE_API_KEY) {
-      providerChain.push({
-        name: 'lovable',
-        apiUrl: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-        apiKey: LOVABLE_API_KEY,
-        model: lovableModelMap[model || ''] || 'google/gemini-3-flash-preview',
-        extraHeaders: {},
-      });
-    }
+    // NOTE: OpenRouter-only mode. No fallback to Lovable AI — user explicitly requested
+    // that Wiser AI runs on their OpenRouter key only.
 
     const maxRetries = 3;
     let lastErrorMessage = 'Unable to process request';
