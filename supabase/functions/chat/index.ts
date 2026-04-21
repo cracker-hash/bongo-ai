@@ -102,24 +102,24 @@ serve(async (req) => {
       'deepseek-r1': 'deepseek/deepseek-r1',
     };
 
-    // Determine which API to use: prefer Lovable AI, fallback to OpenRouter, then OpenAI
-    const useLovable = !!LOVABLE_API_KEY;
-    const useOpenRouter = !useLovable && !!OPENROUTER_API_KEY;
+    // Determine which API to use: prefer OpenRouter, fallback to Lovable AI, then OpenAI
+    const useOpenRouter = !!OPENROUTER_API_KEY;
+    const useLovable = !useOpenRouter && !!LOVABLE_API_KEY;
     
     let apiUrl: string;
     let apiKey: string;
     let finalModel: string;
     let extraHeaders: Record<string, string> = {};
 
-    if (useLovable) {
-      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      apiKey = LOVABLE_API_KEY!;
-      finalModel = lovableModelMap[model || ''] || 'google/gemini-3-flash-preview';
-    } else if (useOpenRouter) {
+    if (useOpenRouter) {
       apiUrl = "https://openrouter.ai/api/v1/chat/completions";
       apiKey = OPENROUTER_API_KEY!;
       finalModel = openRouterModelMap[model || ''] || 'openai/gpt-4o-mini';
       extraHeaders = { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" };
+    } else if (useLovable) {
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiKey = LOVABLE_API_KEY!;
+      finalModel = lovableModelMap[model || ''] || 'google/gemini-3-flash-preview';
     } else {
       apiUrl = "https://api.openai.com/v1/chat/completions";
       apiKey = OPENAI_API_KEY!;
