@@ -1,20 +1,35 @@
 
-The dots show `opacity-60` in code but user says they're invisible. Looking at the screenshot — the chat items have no visible dots at all, even on the active "You Whatsapp" item.
 
-Likely cause: The `ChatMenu` component isn't being rendered in the Sidebar, OR the button color (`text-muted-foreground`) blends into the dark background making 60% opacity effectively invisible.
+## Fix: OpenRouter chat not responding
 
-I need to inspect `Sidebar.tsx` to confirm ChatMenu is actually rendered next to each chat item.
+### Diagnosis
+The edge function is correctly routing to OpenRouter — logs confirm `provider=openrouter`. However, OpenRouter returns **"API credits exhausted"** (HTTP 402). The API key `sk-or-v1-48ff7...` has no credit balance on openrouter.ai.
 
-## Plan
+On top of that, the current code treats OpenRouter as the primary provider and **only falls back to Lovable AI if `OPENROUTER_API_KEY` is missing entirely**. A 402 from OpenRouter does not trigger a fallback, so the request just fails.
 
-1. **Verify ChatMenu is rendered** in `src/components/layout/Sidebar.tsx` for each chat history row. If missing, wire it in.
+### What will change
 
-2. **Fix visibility** in `src/components/chat/ChatMenu.tsx`:
-   - Change `opacity-60` → `opacity-100` (always fully visible)
-   - Change `text-muted-foreground` → `text-sidebar-foreground/70` so dots have proper contrast against the dark sidebar
-   - Keep `hover:bg-sidebar-accent` for hover feedback
+**1. Top up OpenRouter (user action, outside code)**
+Add credits to your OpenRouter account at openrouter.ai/credits. Without this, the key cannot make any requests regardless of what we do in code.
 
-3. **Ensure layout** — the chat row must use `flex items-center justify-between` so the dots sit on the right side of each item (as in the original screenshot reference).
+**2. Make fallback automatic on OpenRouter failure — `supabase/functions/chat/index.ts`**
+Wrap the OpenRouter call so that on a 402/401/429 error we automatically retry the request against the Lovable AI gateway. That way if OpenRouter runs out again, chat keeps working instead of going silent.
 
-### Result
-Three dots clearly visible in light gray on every chat history item at all times, brightening on hover, opening the existing dropdown on click.
+```text
+sendRequest(provider=openrouter)
+  ├── 200 → stream back to client
+  └── 402/401/429 → log reason → sendRequest(provider=lovable)
+                                   └── stream back to client
+```
+
+**3. Surface the real error to the UI**
+When both providers fail, return the actual provider error message (e.g. "OpenRouter: insufficient credits") instead of a generic 500, so you can see what's wrong in the chat instead of just a silent failure.
+
+### Files touched
+- `supabase/functions/chat/index.ts` — add try/catch around OpenRouter fetch, fallback to Lovable on 402/401/429, propagate clear error messages
+
+### Out of scope
+- No client-side changes needed
+- No schema changes
+- The OpenRouter key itself stays as you provided it
+
