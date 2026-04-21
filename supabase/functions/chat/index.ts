@@ -586,71 +586,115 @@ ${voiceEnhancement}`
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
-    console.log(`Chat request: mode=${mode}, model=${finalModel}, provider=${useLovable ? 'lovable' : useOpenRouter ? 'openrouter' : 'openai'}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
+    const initialProvider: 'openrouter' | 'lovable' | 'openai' =
+      useOpenRouter ? 'openrouter' : useLovable ? 'lovable' : 'openai';
+
+    console.log(`Chat request: mode=${mode}, model=${finalModel}, provider=${initialProvider}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
+
+    type ProviderConfig = {
+      name: 'openrouter' | 'lovable' | 'openai';
+      apiUrl: string;
+      apiKey: string;
+      model: string;
+      extraHeaders: Record<string, string>;
+    };
+
+    // Build the provider chain: try the chosen provider, then fall back to Lovable AI on auth/credit/rate errors.
+    const providerChain: ProviderConfig[] = [
+      { name: initialProvider, apiUrl, apiKey, model: finalModel, extraHeaders },
+    ];
+
+    if (initialProvider === 'openrouter' && LOVABLE_API_KEY) {
+      providerChain.push({
+        name: 'lovable',
+        apiUrl: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+        apiKey: LOVABLE_API_KEY,
+        model: lovableModelMap[model || ''] || 'google/gemini-3-flash-preview',
+        extraHeaders: {},
+      });
+    }
 
     const maxRetries = 3;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            ...extraHeaders,
-          },
-          body: JSON.stringify({
-            model: finalModel,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages,
-            ],
-            stream: true,
-            max_tokens: 2048,
-          }),
-        });
+    let lastErrorMessage = 'Unable to process request';
+    let lastErrorStatus = 500;
 
-        if (response.ok) {
-          return new Response(response.body, {
-            headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    for (const provider of providerChain) {
+      let providerFailed = false;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const response = await fetch(provider.apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${provider.apiKey}`,
+              "Content-Type": "application/json",
+              ...provider.extraHeaders,
+            },
+            body: JSON.stringify({
+              model: provider.model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...messages,
+              ],
+              stream: true,
+              max_tokens: 2048,
+            }),
           });
-        }
 
-        if (response.status === 402) {
-          console.error("API credits exhausted");
-          return new Response(JSON.stringify({ error: "Service credits exhausted. Please try again later." }), {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        if (response.status === 429) {
-          const waitTime = Math.pow(2, attempt) * 1000;
-          if (attempt < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            continue;
+          if (response.ok) {
+            return new Response(response.body, {
+              headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+            });
           }
-          return new Response(JSON.stringify({ error: "Service is busy. Please wait and try again." }), {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
 
-        console.error("API error:", response.status);
-        return new Response(JSON.stringify({ error: "Unable to process request" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      } catch (fetchError) {
-        console.error(`Attempt ${attempt + 1} failed:`, fetchError);
-        if (attempt < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          // Read body for error context (safe: stream not consumed since not ok-streaming)
+          const errText = await response.text().catch(() => '');
+          console.error(`[${provider.name}] HTTP ${response.status}: ${errText.slice(0, 300)}`);
+
+          // Auth / credit / rate-limit failures → fall back to next provider in the chain
+          if (response.status === 401 || response.status === 402 || response.status === 429) {
+            lastErrorStatus = response.status;
+            if (response.status === 402) {
+              lastErrorMessage = `${provider.name === 'openrouter' ? 'OpenRouter' : provider.name === 'lovable' ? 'Lovable AI' : 'OpenAI'}: insufficient credits`;
+            } else if (response.status === 401) {
+              lastErrorMessage = `${provider.name}: authentication failed`;
+            } else {
+              lastErrorMessage = `${provider.name}: rate limited`;
+              // For 429 on the LAST provider, try exponential backoff before giving up
+              if (providerChain.indexOf(provider) === providerChain.length - 1 && attempt < maxRetries - 1) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                continue;
+              }
+            }
+            providerFailed = true;
+            break; // break attempts loop → try next provider
+          }
+
+          // Other errors: not retryable, not fallbackable
+          lastErrorStatus = 500;
+          lastErrorMessage = `${provider.name}: error ${response.status}`;
+          providerFailed = true;
+          break;
+        } catch (fetchError) {
+          console.error(`[${provider.name}] attempt ${attempt + 1} threw:`, fetchError);
+          lastErrorMessage = `${provider.name}: network error`;
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          } else {
+            providerFailed = true;
+          }
         }
       }
+
+      if (providerFailed) {
+        console.log(`[${provider.name}] failed, trying next provider in chain (if any)`);
+        continue;
+      }
     }
-    
-    return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
-      status: 503,
+
+    console.error(`All providers failed. Last error: ${lastErrorMessage}`);
+    return new Response(JSON.stringify({ error: lastErrorMessage }), {
+      status: lastErrorStatus,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
