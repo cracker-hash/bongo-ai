@@ -85,17 +85,16 @@ async function extractPdfText(pdfContent: string, filename: string): Promise<str
   }
 }
 
-// Get AI provider config with Lovable AI gateway as primary
+// Get AI provider config: OpenAI primary, OpenRouter fallback. Lovable AI removed.
 function getAIConfig(): { apiUrl: string; apiKey: string; model: string; headers: Record<string, string> } {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 
-  if (LOVABLE_API_KEY) {
+  if (OPENAI_API_KEY) {
     return {
-      apiUrl: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      apiKey: LOVABLE_API_KEY,
-      model: "google/gemini-3-flash-preview",
+      apiUrl: "https://api.openai.com/v1/chat/completions",
+      apiKey: OPENAI_API_KEY,
+      model: "gpt-4o-mini",
       headers: {},
     };
   }
@@ -105,14 +104,6 @@ function getAIConfig(): { apiUrl: string; apiKey: string; model: string; headers
       apiKey: OPENROUTER_API_KEY,
       model: "openai/gpt-4o-mini",
       headers: { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" },
-    };
-  }
-  if (OPENAI_API_KEY) {
-    return {
-      apiUrl: "https://api.openai.com/v1/chat/completions",
-      apiKey: OPENAI_API_KEY,
-      model: "gpt-4o-mini",
-      headers: {},
     };
   }
   throw new Error("No AI API key configured");
@@ -173,7 +164,7 @@ serve(async (req) => {
       });
     }
     
-    console.log(`Document processing: user=${claimsData.user.id.slice(0, 8)}, mode=${mode}, provider=${aiConfig.apiUrl.includes('lovable') ? 'lovable' : aiConfig.apiUrl.includes('openrouter') ? 'openrouter' : 'openai'}`);
+    console.log(`Document processing: user=${claimsData.user.id.slice(0, 8)}, mode=${mode}, provider=${aiConfig.apiUrl.includes('openrouter') ? 'openrouter' : 'openai'}`);
 
     // Handle simple text extraction for podcast generator
     if (fileBase64 && fileType === 'pdf') {

@@ -64,32 +64,32 @@ serve(async (req) => {
     }
 
     const { messages, mode = 'conversation', model, generateImage, imagePrompt, isVoice } = validationResult.data;
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    
-    if (!LOVABLE_API_KEY && !OPENROUTER_API_KEY && !OPENAI_API_KEY) {
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+
+    if (!OPENAI_API_KEY && !OPENROUTER_API_KEY) {
       console.error("No AI API key configured");
       return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
-    // Model mapping - prefer Lovable AI gateway models
-    const lovableModelMap: Record<string, string> = {
-      'gpt-4o-mini': 'google/gemini-3-flash-preview',
-      'gpt-4o': 'google/gemini-2.5-pro',
-      'gpt-4-turbo': 'openai/gpt-5-mini',
-      'claude-3.5-sonnet': 'google/gemini-2.5-pro',
-      'claude-3-opus': 'openai/gpt-5',
-      'gemini-2.0-flash': 'google/gemini-3-flash-preview',
-      'gemini-1.5-pro': 'google/gemini-2.5-pro',
-      'llama-3.3-70b': 'google/gemini-2.5-flash',
-      'deepseek-r1': 'google/gemini-2.5-pro',
+
+    // Model mapping for OpenAI (primary)
+    const openAIModelMap: Record<string, string> = {
+      'gpt-4o-mini': 'gpt-4o-mini',
+      'gpt-4o': 'gpt-4o',
+      'gpt-4-turbo': 'gpt-4-turbo',
+      'claude-3.5-sonnet': 'gpt-4o',
+      'claude-3-opus': 'gpt-4o',
+      'gemini-2.0-flash': 'gpt-4o-mini',
+      'gemini-1.5-pro': 'gpt-4o',
+      'llama-3.3-70b': 'gpt-4o-mini',
+      'deepseek-r1': 'gpt-4o',
     };
 
+    // Model mapping for OpenRouter (fallback)
     const openRouterModelMap: Record<string, string> = {
       'gpt-4o-mini': 'openai/gpt-4o-mini',
       'gpt-4o': 'openai/gpt-4o',
@@ -102,28 +102,23 @@ serve(async (req) => {
       'deepseek-r1': 'deepseek/deepseek-r1',
     };
 
-    // Determine which API to use: prefer OpenRouter, fallback to Lovable AI, then OpenAI
-    const useOpenRouter = !!OPENROUTER_API_KEY;
-    const useLovable = !useOpenRouter && !!LOVABLE_API_KEY;
-    
+    // Primary: OpenAI. Fallback: OpenRouter.
+    const useOpenAI = !!OPENAI_API_KEY;
+
     let apiUrl: string;
     let apiKey: string;
     let finalModel: string;
     let extraHeaders: Record<string, string> = {};
 
-    if (useOpenRouter) {
+    if (useOpenAI) {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      apiKey = OPENAI_API_KEY!;
+      finalModel = openAIModelMap[model || ''] || 'gpt-4o-mini';
+    } else {
       apiUrl = "https://openrouter.ai/api/v1/chat/completions";
       apiKey = OPENROUTER_API_KEY!;
       finalModel = openRouterModelMap[model || ''] || 'openai/gpt-4o-mini';
       extraHeaders = { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" };
-    } else if (useLovable) {
-      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      apiKey = LOVABLE_API_KEY!;
-      finalModel = lovableModelMap[model || ''] || 'google/gemini-3-flash-preview';
-    } else {
-      apiUrl = "https://api.openai.com/v1/chat/completions";
-      apiKey = OPENAI_API_KEY!;
-      finalModel = "gpt-4o-mini";
     }
 
     // Handle image generation requests with Freepik API
@@ -586,26 +581,32 @@ ${voiceEnhancement}`
 
     const systemPrompt = modePrompts[mode] || modePrompts.conversation;
 
-    const initialProvider: 'openrouter' | 'lovable' | 'openai' =
-      useOpenRouter ? 'openrouter' : useLovable ? 'lovable' : 'openai';
+    const initialProvider: 'openai' | 'openrouter' = useOpenAI ? 'openai' : 'openrouter';
 
     console.log(`Chat request: mode=${mode}, model=${finalModel}, provider=${initialProvider}, messages=${messages.length}, user=${userId?.slice(0, 8) || 'anonymous'}`);
 
     type ProviderConfig = {
-      name: 'openrouter' | 'lovable' | 'openai';
+      name: 'openai' | 'openrouter';
       apiUrl: string;
       apiKey: string;
       model: string;
       extraHeaders: Record<string, string>;
     };
 
-    // Build the provider chain: try the chosen provider, then fall back to Lovable AI on auth/credit/rate errors.
+    // Provider chain: OpenAI primary → OpenRouter fallback (when both are configured).
     const providerChain: ProviderConfig[] = [
       { name: initialProvider, apiUrl, apiKey, model: finalModel, extraHeaders },
     ];
 
-    // NOTE: OpenRouter-only mode. No fallback to Lovable AI — user explicitly requested
-    // that Wiser AI runs on their OpenRouter key only.
+    if (useOpenAI && OPENROUTER_API_KEY) {
+      providerChain.push({
+        name: 'openrouter',
+        apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+        apiKey: OPENROUTER_API_KEY,
+        model: openRouterModelMap[model || ''] || 'openai/gpt-4o-mini',
+        extraHeaders: { "HTTP-Referer": "https://wiser-ai.lovable.app", "X-Title": "Wiser AI" },
+      });
+    }
 
     const maxRetries = 3;
     let lastErrorMessage = 'Unable to process request';
@@ -648,7 +649,7 @@ ${voiceEnhancement}`
           if (response.status === 401 || response.status === 402 || response.status === 429) {
             lastErrorStatus = response.status;
             if (response.status === 402) {
-              lastErrorMessage = `${provider.name === 'openrouter' ? 'OpenRouter' : provider.name === 'lovable' ? 'Lovable AI' : 'OpenAI'}: insufficient credits`;
+              lastErrorMessage = `${provider.name === 'openrouter' ? 'OpenRouter' : 'OpenAI'}: insufficient credits`;
             } else if (response.status === 401) {
               lastErrorMessage = `${provider.name}: authentication failed`;
             } else {
